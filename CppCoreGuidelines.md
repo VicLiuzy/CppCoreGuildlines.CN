@@ -967,153 +967,161 @@ void user2()
 过度检查可能代价高昂。
 有些情况下，早期检查效率很低，因为您可能永远不需要该值，或者可能只需要比整体更容易检查的部分值。同样，不要添加有效性检查来改变接口的渐进行为（例如，不要向平均复杂度为`O(1)`的接口添加`O(n)`的检查）。
 
-    class Jet {    // Physics says: e * e < x * x + y * y + z * z
-        float x;
-        float y;
-        float z;
-        float e;
-    public:
-        Jet(float x, float y, float z, float e)
-            :x(x), y(y), z(z), e(e)
-        {
-            // Should I check here that the values are physically meaningful?
-        }
+```cpp
+class Jet {    // Physics says: e * e < x * x + y * y + z * z
+    float x;
+    float y;
+    float z;
+    float e;
+public:
+    Jet(float x, float y, float z, float e)
+        :x(x), y(y), z(z), e(e)
+    {
+        // Should I check here that the values are physically meaningful?
+    }
 
-        float m() const
-        {
-            // Should I handle the degenerate case here?
-            return sqrt(x * x + y * y + z * z - e * e);
-        }
+    float m() const
+    {
+        // Should I handle the degenerate case here?
+        return sqrt(x * x + y * y + z * z - e * e);
+    }
 
-        ???
-    };
+    ???
+};
+```
 
-The physical law for a jet (`e * e < x * x + y * y + z * z`) is not an invariant because of the possibility for measurement errors.
+Jet的物理定律 (`e * e < x * x + y * y + z * z`) 不是一个不变量，因为可能存在测量误差。
 
-???
+??? （*Vic：是否想表达，优先检查`x`/`y`/`z`/`e`各个单独值，而非计算公式之后再检查*）
 
 ##### Enforcement
 
-* Look at pointers and arrays: Do range-checking early and not repeatedly
-* Look at conversions: Eliminate or mark narrowing conversions
-* Look for unchecked values coming from input
-* Look for structured data (objects of classes with invariants) being converted into strings
+* 查看指针和数组：尽早进行范围检查，不要重复
+* 查看类型转换：消除或标记收缩转换（narrowing conversions）
+* 查找来自输入的未检查值
+* 寻找被转换成字符串的结构化数据（具有不变量的类的对象）
 * ???
 
-### <a name="Rp-leak"></a>P.8: Don't leak any resources
+### <a name="Rp-leak"></a>P.8: 不要泄露任何资源
 
 ##### Reason
 
-Even a slow growth in resources will, over time, exhaust the availability of those resources.
-This is particularly important for long-running programs, but is an essential piece of responsible programming behavior.
+随着时间的推移，即使资源增长缓慢，也会耗尽这些资源。
+这对于长时间运行的程序尤其重要，但却是负责任的编程行为的一个基本部分。
 
 ##### Example, bad
 
-    void f(char* name)
-    {
-        FILE* input = fopen(name, "r");
-        // ...
-        if (something) return;   // bad: if something == true, a file handle is leaked
-        // ...
-        fclose(input);
-    }
+```cpp
+void f(char* name)
+{
+    FILE* input = fopen(name, "r");
+    // ...
+    if (something) return;   // bad: if something == true, a file handle is leaked
+    // ...
+    fclose(input);
+}
+```
+更好的[RAII](#Rr-raii):
 
-Prefer [RAII](#Rr-raii):
+```
+void f(char* name)
+{
+    ifstream input {name};
+    // ...
+    if (something) return;   // OK: no leak
+    // ...
+}
+```
 
-    void f(char* name)
-    {
-        ifstream input {name};
-        // ...
-        if (something) return;   // OK: no leak
-        // ...
-    }
-
-**See also**: [The resource management section](#S-resource)
-
-##### Note
-
-A leak is colloquially "anything that isn't cleaned up."
-The more important classification is "anything that can no longer be cleaned up."
-For example, allocating an object on the heap and then losing the last pointer that points to that allocation.
-This rule should not be taken as requiring that allocations within long-lived objects must be returned during program shutdown.
-For example, relying on system guaranteed cleanup such as file closing and memory deallocation upon process shutdown can simplify code.
-However, relying on abstractions that implicitly clean up can be as simple, and often safer.
+**See also**: [资源管理章节](#S-resource)
 
 ##### Note
 
-Enforcing [the lifetime safety profile](#SS-lifetime) eliminates leaks.
-When combined with resource safety provided by [RAII](#Rr-raii), it eliminates the need for "garbage collection" (by generating no garbage).
-Combine this with enforcement of [the type and bounds profiles](#SS-force) and you get complete type- and resource-safety, guaranteed by tools.
+泄漏通俗地说是“任何未清理的东西”。
+更重要的分类是“任何不能再清理的东西”。
+例如，在堆上分配一个对象，然后丢掉指向该分配的最后一个指针。
+此规则不应被视为要求在程序关闭期间必须返回长寿命对象中的分配。
+例如，依赖于系统保证的清理，比如文件关闭和进程关闭时的内存释放，可以简化代码。
+然而，依靠隐式清理的抽象可能同样简单，而且通常更安全。
+
+##### Note
+
+实施 [生命周期安全简介](#SS-lifetime)可以消除泄露.
+当与[RAII](#Rr-raii)提供的资源安全相结合时，它消除了“垃圾收集”的需要（因为不会产生垃圾）。
+将生命周期与[类型和边界配置文件](#SS-force)的实施相结合，您将获得完整的类型和资源安全性，并由工具保证。
 
 ##### Enforcement
 
-* Look at pointers: Classify them into non-owners (the default) and owners.
-  Where feasible, replace owners with standard-library resource handles (as in the example above).
-  Alternatively, mark an owner as such using `owner` from [the GSL](#S-gsl).
-* Look for naked `new` and `delete`
-* Look for known resource allocating functions returning raw pointers (such as `fopen`, `malloc`, and `strdup`)
+* 关注指针：将它们分为非所有者（默认值）和所有者。
+  在可行的情况下，用标准库资源句柄替换所有者（如上面的示例所示）。
+  或者，使用[GSL](#S-GSL)中的“owner”标记所有者。
+* 关注裸调用的`new`和`delete`
+* 关注返回原始指针的已知资源分配函数（如`fopen`、`malloc`和`strdup`）
 
-### <a name="Rp-waste"></a>P.9: Don't waste time or space
+### <a name="Rp-waste"></a>P.9: 不要浪费时间和空间
 
 ##### Reason
 
-This is C++.
+这是C++。
 
 ##### Note
 
-Time and space that you spend well to achieve a goal (e.g., speed of development, resource safety, or simplification of testing) is not wasted.
-"Another benefit of striving for efficiency is that the process forces you to understand the problem in more depth." - Alex Stepanov
+您为实现目标（例如，开发速度、资源安全或简化测试）所花费的时间和空间不会被浪费。
+“追求效率的另一个好处是，这个过程迫使你更深入地理解问题。” -- 亚历克斯·斯特帕诺夫
 
 ##### Example, bad
 
-    struct X {
-        char ch;
-        int i;
-        string s;
-        char ch2;
+```cpp
+struct X {
+    char ch;
+    int i;
+    string s;
+    char ch2;
 
-        X& operator=(const X& a);
-        X(const X&);
-    };
+    X& operator=(const X& a);
+    X(const X&);
+};
 
-    X waste(const char* p)
-    {
-        if (!p) throw Nullptr_error{};
-        int n = strlen(p);
-        auto buf = new char[n];
-        if (!buf) throw Allocation_error{};
-        for (int i = 0; i < n; ++i) buf[i] = p[i];
-        // ... manipulate buffer ...
-        X x;
-        x.ch = 'a';
-        x.s = string(n);    // give x.s space for *p
-        for (gsl::index i = 0; i < x.s.size(); ++i) x.s[i] = buf[i];  // copy buf into x.s
-        delete[] buf;
-        return x;
-    }
+X waste(const char* p)
+{
+    if (!p) throw Nullptr_error{};
+    int n = strlen(p);
+    auto buf = new char[n];
+    if (!buf) throw Allocation_error{};
+    for (int i = 0; i < n; ++i) buf[i] = p[i];
+    // ... manipulate buffer ...
+    X x;
+    x.ch = 'a';
+    x.s = string(n);    // give x.s space for *p
+    for (gsl::index i = 0; i < x.s.size(); ++i) x.s[i] = buf[i];  // copy buf into x.s
+    delete[] buf;
+    return x;
+}
 
-    void driver()
-    {
-        X x = waste("Typical argument");
-        // ...
-    }
+void driver()
+{
+    X x = waste("Typical argument");
+    // ...
+}
+```
 
-Yes, this is a caricature, but we have seen every individual mistake in production code, and worse.
-Note that the layout of `X` guarantees that at least 6 bytes (and most likely more) are wasted.
-The spurious definition of copy operations disables move semantics so that the return operation is slow
-(please note that the Return Value Optimization, RVO, is not guaranteed here).
-The use of `new` and `delete` for `buf` is redundant; if we really needed a local string, we should use a local `string`.
-There are several more performance bugs and gratuitous complication.
+是的，这个例子比较夸张，但我们已经看到了生产代码中的每一个错误，以及更糟的错误。
+注意，`X`的布局保证至少浪费6个字节（很可能更多）。
+复制操作的虚假定义禁用了移动语义，因此返回操作很慢
+（请注意，此处不保证返回值优化RVO）。
+对`buf`使用`new`和`delete`是多余的；如果我们真的需要一个本地字符串，我们应该使用一个本地`string`对象。
+还有几个性能缺陷和无端的复杂性。
 
 ##### Example, bad
 
-    void lower(zstring s)
-    {
-        for (int i = 0; i < strlen(s); ++i) s[i] = tolower(s[i]);
-    }
-
-This is actually an example from production code.
-We can see that in our condition we have `i < strlen(s)`. This expression will be evaluated on every iteration of the loop, which means that `strlen` must walk through string every loop to discover its length. While the string contents are changing, it's assumed that `toLower` will not affect the length of the string, so it's better to cache the length outside the loop and not incur that cost each iteration.
+```cpp
+void lower(zstring s)
+{
+    for (int i = 0; i < strlen(s); ++i) s[i] = tolower(s[i]);
+}
+```
+这实际上是生产代码中的一个示例。
+我们可以看到，有`i<strlen(s)`。该表达式将在循环的每次迭代中求值，这意味着`strlen`必须遍历每个循环来计算字符串长度。当字符串内容发生变化时，我们假设`toLower`不会影响字符串的长度，因此最好将长度缓存在循环之外，而不要导致每次迭代的成本。
 
 ##### Note
 
@@ -1122,9 +1130,14 @@ However, waste spread liberally across a code base can easily be significant and
 The aim of this rule (and the more specific rules that support it) is to eliminate most waste related to the use of C++ before it happens.
 After that, we can look at waste related to algorithms and requirements, but that is beyond the scope of these guidelines.
 
+单个关于浪费的例子少有意义，如果意义重大，专家通常很容易消除。
+然而，在代码库中大量传播的浪费可能很容易造成重大影响，而且专家并非总是像我们希望的那样可用。
+这条规则（以及支持它的更具体的规则）的目的是在使用C++之前消除大多数与之相关的浪费。
+之后，我们可以研究与算法和需求相关的浪费，但这超出了这些指南的范围。
+
 ##### Enforcement
 
-Many more specific rules aim at the overall goals of simplicity and elimination of gratuitous waste.
+许多更具体的规则旨在简化和消除无端浪费的总体目标。
 
 * Flag an unused return value from a user-defined non-defaulted postfix `operator++` or `operator--` function. Prefer using the prefix form instead. (Note: "User-defined non-defaulted" is intended to reduce noise. Review this enforcement if it's still too noisy in practice.)
 
