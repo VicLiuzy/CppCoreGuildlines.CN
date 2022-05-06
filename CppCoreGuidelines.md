@@ -1,4 +1,4 @@
-# <a name="main"></a>C++ Core Guidelines
+# <a name="main"></a>C++ 核心指南中文版
 
 January 3, 2022
 
@@ -8,25 +8,28 @@ Editors:
 * [Bjarne Stroustrup](http://www.stroustrup.com)
 * [Herb Sutter](http://herbsutter.com/)
 
-This is a living document under continuous improvement.
-Had it been an open-source (code) project, this would have been release 0.8.
-Copying, use, modification, and creation of derivative works from this project is licensed under an MIT-style license.
-Contributing to this project requires agreeing to a Contributor License. See the accompanying [LICENSE](LICENSE) file for details.
-We make this project available to "friendly users" to use, copy, modify, and derive from, hoping for constructive input.
+Translators:
 
-Comments and suggestions for improvements are most welcome.
-We plan to modify and extend this document as our understanding improves and the language and the set of available libraries improve.
-When commenting, please note [the introduction](#S-introduction) that outlines our aims and general approach.
-The list of contributors is [here](#SS-ack).
+* [Vic Liu](https://vicliuzy.github.io/)
 
-Problems:
+这是一份不断改进的动态文档。
+如果它是一个开源（代码）项目，那么它应该是0.8版。
+本项目衍生作品的复制、使用、修改和创作均获得MIT风格的许可。
+参与此项目需要获得参与者许可证。有关详细信息，请参阅随附的LICENSE文件。
+我们将这个项目提供给“友好的用户”使用、复制、修改和衍生，希望获得建设性的投入。
 
-* The sets of rules have not been completely checked for completeness, consistency, or enforceability.
-* Triple question marks (???) mark known missing information
-* Update reference sections; many pre-C++11 sources are too old.
-* For a more-or-less up-to-date to-do list see: [To-do: Unclassified proto-rules](#S-unclassified)
+欢迎提出改进意见和建议。
+随着我们理解的提高，以及语言和可用库集的改进，我们计划修改和扩展本文档。
 
-You can [read an explanation of the scope and structure of this Guide](#S-abstract) or just jump straight in:
+问题：
+
+*这些规则集尚未完全检查完整性、一致性或可执行性。
+*三个问号（???）标记已知的缺失信息
+*更新参考章节；许多C++11之前的源代码都太旧了。
+*有关或多或少最新的待办事项列表，请参见：[待办事项：未分类的原始规则](#S-unclassified)
+
+
+你可以[阅读本指南范围和结构的解释](#S-abstract)或直接进入：
 
 * [In: Introduction](#S-introduction)
 * [P: Philosophy](#S-philosophy)
@@ -45,14 +48,14 @@ You can [read an explanation of the scope and structure of this Guide](#S-abstra
 * [SF: Source files](#S-source)
 * [SL: The Standard Library](#S-stdlib)
 
-Supporting sections:
+支持部分：
 
 * [A: Architectural ideas](#S-A)
 * [NR: Non-Rules and myths](#S-not)
 * [RF: References](#S-references)
 * [Pro: Profiles](#S-profile)
 * [GSL: Guidelines support library](#S-gsl)
-* [NL: Naming and layout suggestions](#S-naming)
+* [NL: Naming and layout rules](#S-naming)
 * [FAQ: Answers to frequently asked questions](#S-faq)
 * [Appendix A: Libraries](#S-libraries)
 * [Appendix B: Modernizing code](#S-modernizing)
@@ -61,7 +64,7 @@ Supporting sections:
 * [Glossary](#S-glossary)
 * [To-do: Unclassified proto-rules](#S-unclassified)
 
-You can sample rules for specific language features:
+您可以为特定语言功能提供示例规则：
 
 * assignment:
 [regular types](#Rc-regular) --
@@ -170,7 +173,7 @@ You can sample rules for specific language features:
 [destructor](#Rc-dtor-virtual) --
 [never fail](#Rc-dtor-fail)
 
-You can look at design concepts used to express the rules:
+您可以查看用于表达规则的设计概念：
 
 * assertion: ???
 * error: ???
@@ -445,7 +448,7 @@ Supporting sections:
 * [RF: References](#S-references)
 * [Pro: Profiles](#S-profile)
 * [GSL: Guidelines support library](#S-gsl)
-* [NL: Naming and layout suggestions](#S-naming)
+* [NL: Naming and layout rules](#S-naming)
 * [FAQ: Answers to frequently asked questions](#S-faq)
 * [Appendix A: Libraries](#S-libraries)
 * [Appendix B: Modernizing code](#S-modernizing)
@@ -459,471 +462,510 @@ These sections are not orthogonal.
 Each section (e.g., "P" for "Philosophy") and each subsection (e.g., "C.hier" for "Class Hierarchies (OOP)") have an abbreviation for ease of searching and reference.
 The main section abbreviations are also used in rule numbers (e.g., "C.11" for "Make concrete types regular").
 
-# <a name="S-philosophy"></a>P: Philosophy
+# <a name="S-philosophy"></a>P: Philosophy哲学
 
-The rules in this section are very general.
+本节的规则非常笼统。
 
-Philosophy rules summary:
+哲学规则摘要：
 
-* [P.1: Express ideas directly in code](#Rp-direct)
-* [P.2: Write in ISO Standard C++](#Rp-Cplusplus)
-* [P.3: Express intent](#Rp-what)
-* [P.4: Ideally, a program should be statically type safe](#Rp-typesafe)
-* [P.5: Prefer compile-time checking to run-time checking](#Rp-compile-time)
-* [P.6: What cannot be checked at compile time should be checkable at run time](#Rp-run-time)
-* [P.7: Catch run-time errors early](#Rp-early)
-* [P.8: Don't leak any resources](#Rp-leak)
-* [P.9: Don't waste time or space](#Rp-waste)
-* [P.10: Prefer immutable data to mutable data](#Rp-mutable)
-* [P.11: Encapsulate messy constructs, rather than spreading through the code](#Rp-library)
-* [P.12: Use supporting tools as appropriate](#Rp-tools)
-* [P.13: Use support libraries as appropriate](#Rp-lib)
+* [P.1: 直接用代码表达想法](#Rp-direct)
+* [P.2: 用ISO标准编写C++](#Rp-Cplusplus)
+* [P.3: 表达意图](#Rp-what)
+* [P.4: 理想情况下，程序应该是静态类型安全的](#Rp-typesafe)
+* [P.5: 与运行期检查相比，更喜欢编译期检查](#Rp-compile-time)
+* [P.6: 编译期无法检查的内容应该在运行期可以检查](#Rp-run-time)
+* [P.7: 尽早捕获运行时错误](#Rp-early)
+* [P.8: 不要泄露任何资源](#Rp-leak)
+* [P.9: 不要浪费时间和空间](#Rp-waste)
+* [P.10: 与可变数据相比，更喜欢不可变数据](#Rp-mutable)
+* [P.11: 封装混乱的结构，而不是在代码中传播](#Rp-library)
+* [P.12: 根据需要使用辅助工具](#Rp-tools)
+* [P.13: 根据需要使用支持库](#Rp-lib)
 
-Philosophical rules are generally not mechanically checkable.
-However, individual rules reflecting these philosophical themes are.
-Without a philosophical basis, the more concrete/specific/checkable rules lack rationale.
+哲学方面的规则通常是不可机械检验的。
+然而，本章（哲学）的个别规则是可以机械检验的。
+如果没有哲学基础，更具体的/特定的/可核查的规则就缺乏合理性。
 
-### <a name="Rp-direct"></a>P.1: Express ideas directly in code
+### <a name="Rp-direct"></a>P.1: 直接用代码表达想法
 
 ##### Reason
 
-Compilers don't read comments (or design documents) and neither do many programmers (consistently).
-What is expressed in code has defined semantics and can (in principle) be checked by compilers and other tools.
+编译器不会阅读注释（或设计文档），许多程序员也不会阅读全部注释与文档。
+代码中表达的内容定义了语义，并且（原则上）可以由编译器和其他工具进行检查。
 
 ##### Example
 
-    class Date {
-    public:
-        Month month() const;  // do
-        int month();          // don't
-        // ...
-    };
+```cpp
+class Date {
+public:
+    Month month() const;  // do
+    int month();          // don't
+    // ...
+};
+```
 
-The first declaration of `month` is explicit about returning a `Month` and about not modifying the state of the `Date` object.
-The second version leaves the reader guessing and opens more possibilities for uncaught bugs.
+`month`的第一个声明明确表示返回`Month`对象，并且不修改`Date`对象的状态。
+第二个版本让读者猜测，并提高了未捕获的bug的可能性。
 
 ##### Example, bad
 
-This loop is a restricted form of `std::find`:
+此循环是限制使用`std::find`的形式：
 
-    void f(vector<string>& v)
-    {
-        string val;
-        cin >> val;
-        // ...
-        int index = -1;                    // bad, plus should use gsl::index
-        for (int i = 0; i < v.size(); ++i) {
-            if (v[i] == val) {
-                index = i;
-                break;
-            }
+```cpp
+void f(vector<string>& v)
+{
+    string val;
+    cin >> val;
+    // ...
+    int index = -1;                    // bad, plus should use gsl::index
+    for (int i = 0; i < v.size(); ++i) {
+        if (v[i] == val) {
+            index = i;
+            break;
         }
-        // ...
     }
+    // ...
+}
+```
 
 ##### Example, good
 
-A much clearer expression of intent would be:
+更明确的意图表达方式是：
 
-    void f(vector<string>& v)
-    {
-        string val;
-        cin >> val;
-        // ...
-        auto p = find(begin(v), end(v), val);  // better
-        // ...
-    }
+```cpp
+void f(vector<string>& v)
+{
+    string val;
+    cin >> val;
+    // ...
+    auto p = find(begin(v), end(v), val);  // better
+    // ...
+}
+```
 
-A well-designed library expresses intent (what is to be done, rather than just how something is being done) far better than direct use of language features.
+一个设计良好的库比直接使用语言特性更好地表达意图（要做什么，而不仅仅是如何做）。
 
-A C++ programmer should know the basics of the standard library, and use it where appropriate.
-Any programmer should know the basics of the foundation libraries of the project being worked on, and use them appropriately.
-Any programmer using these guidelines should know the [guidelines support library](#S-gsl), and use it appropriately.
+C++程序员应该了解标准库的基本知识，并在适当的地方使用它。
+任何程序员都应该了解正在进行的项目的基础库的基本知识，并适当地使用它们。
+任何使用本指南的程序员都应该了解[guidelines support library（GSL库）](#S-gsl)， 并在适当的地方使用它。
 
 ##### Example
 
-    change_speed(double s);   // bad: what does s signify?
-    // ...
-    change_speed(2.3);
+```cpp
+change_speed(double s);   // bad: what does s signify?
+// ...
+change_speed(2.3);
+```
 
-A better approach is to be explicit about the meaning of the double (new speed or delta on old speed?) and the unit used:
+更好的方法是明确双精度的含义（新速度或旧速度上的增量？）使用的单位是：
 
-    change_speed(Speed s);    // better: the meaning of s is specified
-    // ...
-    change_speed(2.3);        // error: no unit
-    change_speed(23_m / 10s);  // meters per second
+```cpp
+change_speed(Speed s);    // better: the meaning of s is specified
+// ...
+change_speed(2.3);        // error: no unit
+change_speed(23_m / 10s);  // meters per second
+```
 
-We could have accepted a plain (unit-less) `double` as a delta, but that would have been error-prone.
-If we wanted both absolute speed and deltas, we would have defined a `Delta` type.
-
-##### Enforcement
-
-Very hard in general.
-
-* use `const` consistently (check if member functions modify their object; check if functions modify arguments passed by pointer or reference)
-* flag uses of casts (casts neuter the type system)
-* detect code that mimics the standard library (hard)
-
-### <a name="Rp-Cplusplus"></a>P.2: Write in ISO Standard C++
-
-##### Reason
-
-This is a set of guidelines for writing ISO Standard C++.
-
-##### Note
-
-There are environments where extensions are necessary, e.g., to access system resources.
-In such cases, localize the use of necessary extensions and control their use with non-core Coding Guidelines.  If possible, build interfaces that encapsulate the extensions so they can be turned off or compiled away on systems that do not support those extensions.
-
-Extensions often do not have rigorously defined semantics.  Even extensions that
-are common and implemented by multiple compilers might have slightly different
-behaviors and edge case behavior as a direct result of *not* having a rigorous
-standard definition.  With sufficient use of any such extension, expected
-portability will be impacted.
-
-##### Note
-
-Using valid ISO C++ does not guarantee portability (let alone correctness).
-Avoid dependence on undefined behavior (e.g., [undefined order of evaluation](#Res-order))
-and be aware of constructs with implementation defined meaning (e.g., `sizeof(int)`).
-
-##### Note
-
-There are environments where restrictions on use of standard C++ language or library features are necessary, e.g., to avoid dynamic memory allocation as required by aircraft control software standards.
-In such cases, control their (dis)use with an extension of these Coding Guidelines customized to the specific environment.
+我们本可以接受一个普通的（不含单位的）`double`作为delta，但这很容易出错。
+如果我们想要绝对速度和增量，我们会定义一个`Delta`类型。
 
 ##### Enforcement
 
-Use an up-to-date C++ compiler (currently C++20 or C++17) with a set of options that do not accept extensions.
+总的来说很难。
 
-### <a name="Rp-what"></a>P.3: Express intent
+* 一致地使用`const`（检查成员函数是否修改其对象；检查函数是否修改指针或引用传递的参数）
+* 标记强制类型转换的使用（强制类型转换使类型系统失效）
+* 检测模仿标准库的代码（困难）
+
+### <a name="Rp-Cplusplus"></a>P.2: 用ISO标准编写C++
 
 ##### Reason
 
-Unless the intent of some code is stated (e.g., in names or comments), it is impossible to tell whether the code does what it is supposed to do.
+本指南是一套编写ISO标准C++的指南。
+
+##### Note
+
+有些环境需要扩展，例如访问系统资源。
+在这种情况下，将必要扩展的使用本地化，并使用非核心编码准则控制它们的使用。如果可能，构建封装扩展的接口，以便在不支持这些扩展的系统上关闭或不编译它们。
+
+扩展通常没有严格定义的语义。即使是常见的、由多个编译器实现的扩展，由于*没有*严格的标准定义，其行为和边缘案例行为也可能略有不同。如果充分使用任何此类扩展，预期的可移植性将受到影响。
+
+##### Note
+
+使用有效的ISO C++并不能保证可移植性（更不用说正确性了）。
+避免依赖未定义的行为 （例如， [未定义的计算顺序](#Res-order)）
+并了解具有实现定义含义的结构 （例如， `sizeof(int)`）。
+
+##### Note
+
+有些环境需要限制标准C++语言或库功能的使用，例如，在飞机控制软件标准中，要求避免动态内存分配。
+在这种情况下，通过扩展这些针对特定环境定制的编码准则来控制它们的（不）使用。
+
+##### Enforcement
+
+使用最新的C++编译器（当前为C++20或C++17）和一组不接受扩展的选项。
+
+### <a name="Rp-what"></a>P.3: 表达意图
+
+##### Reason
+
+除非说明了某些代码的意图（例如，在名称或注释中），否则无法判断该代码是否执行了它应该执行的操作。
 
 ##### Example
 
-    gsl::index i = 0;
-    while (i < v.size()) {
-        // ... do something with v[i] ...
-    }
+```cpp
+gsl::index i = 0;
+while (i < v.size()) {
+    // ... do something with v[i] ...
+}
+```
 
-The intent of "just" looping over the elements of `v` is not expressed here. The implementation detail of an index is exposed (so that it might be misused), and `i` outlives the scope of the loop, which might or might not be intended. The reader cannot know from just this section of code.
+这里没有表达“只是”循环遍历`v`元素的意图。索引的实现细节是公开的（因此可能会被误用），而`i`的生命周期超出了循环的范围，这可能是有意的，也可能不是有意的。读者无法仅仅从这段代码中获悉。
 
-Better:
-
-    for (const auto& x : v) { /* do something with the value of x */ }
-
+更好的写法:
+```cpp
+for (const auto& x : v) { /* do something with the value of x */ }
+```
 Now, there is no explicit mention of the iteration mechanism, and the loop operates on a reference to `const` elements so that accidental modification cannot happen. If modification is desired, say so:
+现在，没有提到明确的迭代机制，循环运行在`const`元素的引用上，因此不会发生意外修改。如果需要修改，就这样写：
 
-    for (auto& x : v) { /* modify x */ }
-
-For more details about for-statements, see [ES.71](#Res-for-range).
+```cpp
+for (auto& x : v) { /* modify x */ }
+```
+有关`for`语句的更多详细信息，请参见[ES.71](#Res-for-range).
 Sometimes better still, use a named algorithm. This example uses the `for_each` from the Ranges TS because it directly expresses the intent:
+有时更好的做法是使用命名算法。本例使用range TS中的`for_each`，因为它直接表达了意图：
 
-    for_each(v, [](int x) { /* do something with the value of x */ });
-    for_each(par, v, [](int x) { /* do something with the value of x */ });
+```cpp
+for_each(v, [](int x) { /* do something with the value of x */ });
+for_each(par, v, [](int x) { /* do something with the value of x */ });
+```
 
-The last variant makes it clear that we are not interested in the order in which the elements of `v` are handled.
+上方后面一个变体表明，我们对`v`元素的处理顺序不感兴趣。
 
-A programmer should be familiar with
+程序员应该熟悉：
 
-* [The guidelines support library](#S-gsl)
-* [The ISO C++ Standard Library](#S-stdlib)
-* Whatever foundation libraries are used for the current project(s)
+* [The guidelines support library（GSL库）](#S-gsl)
+* [ISO C++标准库](#S-stdlib)
+* 所有当前项目使用的基础库
 
 ##### Note
 
-Alternative formulation: Say what should be done, rather than just how it should be done.
+替代表述：说出应该做什么，而不仅仅是如何做。
 
 ##### Note
 
-Some language constructs express intent better than others.
+有些语言结构比另一些更好地表达意图。
 
 ##### Example
 
-If two `int`s are meant to be the coordinates of a 2D point, say so:
+如果一个2D点的坐标是两个`int`，那么这样写：
 
-    draw_line(int, int, int, int);  // obscure
-    draw_line(Point, Point);        // clearer
+```cpp
+draw_line(int, int, int, int);  // 隐蔽的
+draw_line(Point, Point);        // 更清晰的
+```
 
 ##### Enforcement
 
-Look for common patterns for which there are better alternatives
+寻找有更好替代方案的常见模式
 
-* simple `for` loops vs. range-`for` loops
-* `f(T*, int)` interfaces vs. `f(span<T>)` interfaces
-* loop variables in too large a scope
-* naked `new` and `delete`
-* functions with many parameters of built-in types
+* 简单`for`循环 vs. 基于范围的`for`循环  
+* `f(T*, int)`接口 vs. `f(span<T>)`接口
+* 长循环体中的循环变量
+* 裸调用`new`和`delete`
+* 有很多内建类型参数的函数
 
-There is a huge scope for cleverness and semi-automated program transformation.
+聪明（cleverness）的和半自动的（semi-automated）程序之间的转换空间很大。
 
-### <a name="Rp-typesafe"></a>P.4: Ideally, a program should be statically type safe
+### <a name="Rp-typesafe"></a>P.4: 理想情况下，程序应该是静态类型安全的
 
 ##### Reason
 
-Ideally, a program would be completely statically (compile-time) type safe.
-Unfortunately, that is not possible. Problem areas:
+理想情况下，程序应该是完全静态（编译期）类型安全的。
+不幸的是，这是不可能的。问题领域在于：
 
 * unions
-* casts
-* array decay
-* range errors
-* narrowing conversions
+* 类型转换
+* 数组类型衰减为指针
+* 范围错误
+* 收缩转换（如double -> float）
 
 ##### Note
 
-These areas are sources of serious problems (e.g., crashes and security violations).
-We try to provide alternative techniques.
+这些领域是严重问题的根源（例如崩溃和安全违规）。
+我们试图提供替代技术。
 
 ##### Enforcement
 
-We can ban, restrain, or detect the individual problem categories separately, as required and feasible for individual programs.
-Always suggest an alternative.
-For example:
+我们可以根据个别项目的要求和可行性，分别禁止、限制或检测上述问题中的一个或多个。
+永远建议使用替代方案。
+举例来说：
 
-* unions -- use `variant` (in C++17)
-* casts -- minimize their use; templates can help
-* array decay -- use `span` (from the GSL)
-* range errors -- use `span`
-* narrowing conversions -- minimize their use and use `narrow` or `narrow_cast` (from the GSL) where they are necessary
+* unions -- 使用`variant` （C++17）
+* 类型转换 -- 尽量减少它们的使用；使用模板可以提供帮助
+* 数组类型衰减为指针 -- 使用`span` （GSL库）
+* 范围错误 -- 使用`span`
+* 收缩转换 -- 尽量减少它们的使用，并且在必要时使用`narrow`或者`narrow_cast` （GSL库）
 
-### <a name="Rp-compile-time"></a>P.5: Prefer compile-time checking to run-time checking
+### <a name="Rp-compile-time"></a>P.5: 与运行期检查相比，更喜欢编译期检查
 
 ##### Reason
 
-Code clarity and performance.
-You don't need to write error handlers for errors caught at compile time.
+代码清晰性和性能。
+您不需要为编译时捕获的错误编写错误处理程序。
 
 ##### Example
 
-    // Int is an alias used for integers
-    int bits = 0;         // don't: avoidable code
-    for (Int i = 1; i; i <<= 1)
-        ++bits;
-    if (bits < 32)
-        cerr << "Int too small\n";
+```cpp
+// Int is an alias used for integers
+int bits = 0;         // don't: avoidable code
+for (Int i = 1; i; i <<= 1)
+    ++bits;
+if (bits < 32)
+    cerr << "Int too small\n";
+```
 
-This example fails to achieve what it is trying to achieve (because overflow is undefined) and should be replaced with a simple `static_assert`:
+此示例未能实现它试图实现的目标（因为溢出未定义），应替换为简单的`static_assert`：
 
-    // Int is an alias used for integers
-    static_assert(sizeof(Int) >= 4);    // do: compile-time check
-
-Or better still just use the type system and replace `Int` with `int32_t`.
+```cpp
+// Int is an alias used for integers
+static_assert(sizeof(Int) >= 4);    // do: compile-time check
+```
+或者更好的方法是使用类型系统，并将`Int`替换为`int32_t`。
 
 ##### Example
 
-    void read(int* p, int n);   // read max n integers into *p
+```cpp
+void read(int* p, int n);   // read max n integers into *p
 
-    int a[100];
-    read(a, 1000);    // bad, off the end
+int a[100];
+read(a, 1000);    // bad, off the end
+```
 
-better
+更好的做法：
 
-    void read(span<int> r); // read into the range of integers r
+```cpp
+void read(span<int> r); // read into the range of integers r
 
-    int a[100];
-    read(a);        // better: let the compiler figure out the number of elements
+int a[100];
+read(a);        // better: let the compiler figure out the number of elements
+```
 
-**Alternative formulation**: Don't postpone to run time what can be done well at compile time.
+**替代表述**：不要把编译时可以做得很好的事情推迟到运行时。
 
 ##### Enforcement
 
-* Look for pointer arguments.
-* Look for run-time checks for range violations.
+* 查看指针参数。
+* 查看运行时检查是否存在范围冲突。
 
-### <a name="Rp-run-time"></a>P.6: What cannot be checked at compile time should be checkable at run time
+### <a name="Rp-run-time"></a>P.6:编译期无法检查的内容应该在运行期可以检查
 
 ##### Reason
 
-Leaving hard-to-detect errors in a program is asking for crashes and bad results.
+在程序中留下难以检测的错误会导致崩溃和糟糕的结果。
 
 ##### Note
 
-Ideally, we catch all errors (that are not errors in the programmer's logic) at either compile time or run time. It is impossible to catch all errors at compile time and often not affordable to catch all remaining errors at run time. However, we should endeavor to write programs that in principle can be checked, given sufficient resources (analysis programs, run-time checks, machine resources, time).
+理想情况下，我们需要在编译期或运行期捕获所有错误（不是程序员逻辑中的错误）。在编译期捕获所有错误是不可能的，在运行期捕获所有剩余的错误通常也是不可能的。然而，如果有足够的资源（分析程序、运行时检查、机器资源、时间），我们应该努力编写原则上可以检查出所有错误的程序。
 
 ##### Example, bad
 
-    // separately compiled, possibly dynamically loaded
-    extern void f(int* p);
+```cpp
+// separately compiled, possibly dynamically loaded
+extern void f(int* p);
 
-    void g(int n)
-    {
-        // bad: the number of elements is not passed to f()
-        f(new int[n]);
-    }
+void g(int n)
+{
+    // bad: the number of elements is not passed to f()
+    f(new int[n]);
+}
+```
 
-Here, a crucial bit of information (the number of elements) has been so thoroughly "obscured" that static analysis is probably rendered infeasible and dynamic checking can be very difficult when `f()` is part of an ABI so that we cannot "instrument" that pointer. We could embed helpful information into the free store, but that requires global changes to a system and maybe to the compiler. What we have here is a design that makes error detection very hard.
-
-##### Example, bad
-
-We can of course pass the number of elements along with the pointer:
-
-    // separately compiled, possibly dynamically loaded
-    extern void f2(int* p, int n);
-
-    void g2(int n)
-    {
-        f2(new int[n], m);  // bad: a wrong number of elements can be passed to f()
-    }
-
-Passing the number of elements as an argument is better (and far more common) than just passing the pointer and relying on some (unstated) convention for knowing or discovering the number of elements. However (as shown), a simple typo can introduce a serious error. The connection between the two arguments of `f2()` is conventional, rather than explicit.
-
-Also, it is implicit that `f2()` is supposed to `delete` its argument (or did the caller make a second mistake?).
+在本例中，一个关键的信息位（元素的数量）被彻底“模糊”，以至于静态分析可能变得不可行，而当`f()`是ABI的一部分时，动态检查可能非常困难，因此我们无法“插入”该指针。我们可以将有用的信息嵌入免费存储，但这需要对系统和编译器进行全局更改。我们这里的设计使得错误检测非常困难。
 
 ##### Example, bad
 
-The standard library resource management pointers fail to pass the size when they point to an object:
+我们当然可以通过指针传递元素的数量：
 
-    // separately compiled, possibly dynamically loaded
-    // NB: this assumes the calling code is ABI-compatible, using a
-    // compatible C++ compiler and the same stdlib implementation
-    extern void f3(unique_ptr<int[]>, int n);
+```cpp
+// separately compiled, possibly dynamically loaded
+extern void f2(int* p, int n);
 
-    void g3(int n)
-    {
-        f3(make_unique<int[]>(n), m);    // bad: pass ownership and size separately
-    }
+void g2(int n)
+{
+    f2(new int[n], m);  // bad: a wrong number of elements can be passed to f()
+}
+```
+
+将元素数作为参数传递比仅仅传递指针并依靠某种（未说明的）约定来知道或发现元素数更好（而且更常见）。然而（如例所示），一个简单的打字错误可能会导致严重的错误。`f2()`的两个参数之间的联系是遵循常规的，但不是明确的。
+
+而且，它隐含着`f2()`应该会`delete`其参数（或者调用方是否还犯了第二个错误？）。
+
+##### Example, bad
+
+标准库资源管理指针指向对象时同样无法传递大小：
+
+```cpp
+// 分别编译，可能动态加载
+// 注意: 这假设调用代码是ABI兼容的，使用兼容的C++编译器和相同的stdlib实现
+extern void f3(unique_ptr<int[]>, int n);
+
+void g3(int n)
+{
+    f3(make_unique<int[]>(n), m);    // bad: pass ownership and size separately
+}
+```
 
 ##### Example
 
-We need to pass the pointer and the number of elements as an integral object:
+我们需要将指针和元素数作为一个整数对象传递：
 
-    extern void f4(vector<int>&);   // separately compiled, possibly dynamically loaded
-    extern void f4(span<int>);      // separately compiled, possibly dynamically loaded
-                                    // NB: this assumes the calling code is ABI-compatible, using a
-                                    // compatible C++ compiler and the same stdlib implementation
+```cpp
+extern void f4(vector<int>&);   // 分别编译，可能动态加载
+extern void f4(span<int>);      // 分别编译，可能动态加载
+                                // 注意: 这假设调用代码是ABI兼容的，使用兼容的C++编译器和相同的stdlib实现
 
-    void g3(int n)
-    {
-        vector<int> v(n);
-        f4(v);                     // pass a reference, retain ownership
-        f4(span<int>{v});          // pass a view, retain ownership
-    }
+void g3(int n)
+{
+    vector<int> v(n);
+    f4(v);                     // pass a reference, retain ownership
+    f4(span<int>{v});          // pass a view, retain ownership
+}
+```
 
-This design carries the number of elements along as an integral part of an object, so that errors are unlikely and dynamic (run-time) checking is always feasible, if not always affordable.
+这种设计将元素的数量作为对象的一个组成部分，因此不太可能出现错误，而且动态（运行时）检查即使不总是负担得起，也总是可行的。
 
 ##### Example
 
-How do we transfer both ownership and all information needed for validating use?
+我们如何转移所有权和验证使用所需的所有信息？
 
-    vector<int> f5(int n)    // OK: move
-    {
-        vector<int> v(n);
-        // ... initialize v ...
-        return v;
-    }
+```cpp
+vector<int> f5(int n)    // OK: move
+{
+    vector<int> v(n);
+    // ... initialize v ...
+    return v;
+}
 
-    unique_ptr<int[]> f6(int n)    // bad: loses n
-    {
-        auto p = make_unique<int[]>(n);
-        // ... initialize *p ...
-        return p;
-    }
+unique_ptr<int[]> f6(int n)    // bad: loses n
+{
+    auto p = make_unique<int[]>(n);
+    // ... initialize *p ...
+    return p;
+}
 
-    owner<int*> f7(int n)    // bad: loses n and we might forget to delete
-    {
-        owner<int*> p = new int[n];
-        // ... initialize *p ...
-        return p;
-    }
+owner<int*> f7(int n)    // bad: loses n and we might forget to delete
+{
+    owner<int*> p = new int[n];
+    // ... initialize *p ...
+    return p;
+}
+```
 
 ##### Example
 
 * ???
-* show how possible checks are avoided by interfaces that pass polymorphic base classes around, when they actually know what they need?
-  Or strings as "free-style" options
+* 展示在传递多态基类的接口确实知道自己需要什么的情况下，如何避免可能的检查？
+  或字符串作为“自由样式”选项
 
 ##### Enforcement
 
-* Flag (pointer, count)-style interfaces (this will flag a lot of examples that can't be fixed for compatibility reasons)
+* 标记(pointer, count)风格的接口（这将标记许多由于兼容性原因无法修复的示例）
 * ???
 
-### <a name="Rp-early"></a>P.7: Catch run-time errors early
+### <a name="Rp-early"></a>P.7: 尽早捕获运行时错误
 
 ##### Reason
 
-Avoid "mysterious" crashes.
-Avoid errors leading to (possibly unrecognized) wrong results.
+避免“神秘”的崩溃。
+避免errors导致（可能无法识别）错误结果。
 
 ##### Example
 
-    void increment1(int* p, int n)    // bad: error-prone
-    {
-        for (int i = 0; i < n; ++i) ++p[i];
-    }
+```cpp
+void increment1(int* p, int n)    // bad: error-prone
+{
+    for (int i = 0; i < n; ++i) ++p[i];
+}
 
-    void use1(int m)
-    {
-        const int n = 10;
-        int a[n] = {};
-        // ...
-        increment1(a, m);   // maybe typo, maybe m <= n is supposed
-                            // but assume that m == 20
-        // ...
-    }
+void use1(int m)
+{
+    const int n = 10;
+    int a[n] = {};
+    // ...
+    increment1(a, m);   // 可能是打字错误, 可能假定m <= n
+                        // 但是万一出现m == 20的情况呢
+    // ...
+}
+```
 
-Here we made a small error in `use1` that will lead to corrupted data or a crash.
-The (pointer, count)-style interface leaves `increment1()` with no realistic way of defending itself against out-of-range errors.
-If we could check subscripts for out of range access, then the error would not be discovered until `p[10]` was accessed.
-We could check earlier and improve the code:
+在这里，我们在`use1`中犯了一个小错误，这将导致数据损坏或崩溃。
+(pointer, count)风格的接口使得`increment1()`没有实际的方法来防御超出范围的错误。
+即便我们可以检查超范围访问的下标，但是在访问`p[10]`之前也无法发现错误。
 
-    void increment2(span<int> p)
-    {
-        for (int& x : p) ++x;
-    }
+我们可以提前检查并改进代码：
 
-    void use2(int m)
-    {
-        const int n = 10;
-        int a[n] = {};
-        // ...
-        increment2({a, m});    // maybe typo, maybe m <= n is supposed
-        // ...
-    }
+```cpp
+void increment2(span<int> p)
+{
+    for (int& x : p) ++x;
+}
 
-Now, `m <= n` can be checked at the point of call (early) rather than later.
-If all we had was a typo so that we meant to use `n` as the bound, the code could be further simplified (eliminating the possibility of an error):
+void use2(int m)
+{
+    const int n = 10;
+    int a[n] = {};
+    // ...
+    increment2({a, m});    // 可能是打字错误, 可能假定m <= n
+    // ...
+}
+```
 
-    void use3(int m)
-    {
-        const int n = 10;
-        int a[n] = {};
-        // ...
-        increment2(a);   // the number of elements of a need not be repeated
-        // ...
-    }
+现在，`m<=n`可以在调用点（早期）而不是稍后进行检查。
+如果我们确实有一个拼写错误，也就是说我们就是打算使用`n`作为边界，那么代码可以进一步简化（消除出错的可能性）：
+
+```cpp
+void use3(int m)
+{
+    const int n = 10;
+    int a[n] = {};
+    // ...
+    increment2(a);   // 元素数目不必重复说明
+    // ...
+}
+```
 
 ##### Example, bad
 
-Don't repeatedly check the same value. Don't pass structured data as strings:
+不要重复检查相同的值。不要将结构化数据作为字符串传递：
 
-    Date read_date(istream& is);    // read date from istream
+```cpp
+Date read_date(istream& is);    // read date from istream
 
-    Date extract_date(const string& s);    // extract date from string
+Date extract_date(const string& s);    // extract date from string
 
-    void user1(const string& date)    // manipulate date
-    {
-        auto d = extract_date(date);
-        // ...
-    }
+void user1(const string& date)    // manipulate date
+{
+    auto d = extract_date(date);
+    // ...
+}
 
-    void user2()
-    {
-        Date d = read_date(cin);
-        // ...
-        user1(d.to_string());
-        // ...
-    }
+void user2()
+{
+    Date d = read_date(cin);
+    // ...
+    user1(d.to_string());
+    // ...
+}
+```
 
-The date is validated twice (by the `Date` constructor) and passed as a character string (unstructured data).
+日期经过两次验证（由`Date`构造函数验证），并作为字符串（非结构化数据）传递。
 
 ##### Example
 
-Excess checking can be costly.
-There are cases where checking early is inefficient because you might never need the value, or might only need part of the value that is more easily checked than the whole.  Similarly, don't add validity checks that change the asymptotic behavior of your interface (e.g., don't add a `O(n)` check to an interface with an average complexity of `O(1)`).
+过度检查可能代价高昂。
+有些情况下，早期检查效率很低，因为您可能永远不需要该值，或者可能只需要比整体更容易检查的部分值。同样，不要添加有效性检查来改变接口的渐进行为（例如，不要向平均复杂度为`O(1)`的接口添加`O(n)`的检查）。
 
     class Jet {    // Physics says: e * e < x * x + y * y + z * z
         float x;
@@ -21238,7 +21280,7 @@ Many of them are very similar to what became part of the ISO C++ standard in C++
 * `Unique_pointer`  // A type that matches `Pointer`, is movable, and is not copyable
 * `Shared_pointer`   // A type that matches `Pointer`, and is copyable
 
-# <a name="S-naming"></a>NL: Naming and layout suggestions (if you don't already have one)
+# <a name="S-naming"></a>NL: Naming and layout rules
 
 Consistent naming and layout are helpful.
 If for no other reason because it minimizes "my style is better than your style" arguments.
