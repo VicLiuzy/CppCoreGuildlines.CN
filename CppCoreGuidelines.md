@@ -1125,352 +1125,362 @@ void lower(zstring s)
 
 ##### Note
 
-An individual example of waste is rarely significant, and where it is significant, it is typically easily eliminated by an expert.
-However, waste spread liberally across a code base can easily be significant and experts are not always as available as we would like.
-The aim of this rule (and the more specific rules that support it) is to eliminate most waste related to the use of C++ before it happens.
-After that, we can look at waste related to algorithms and requirements, but that is beyond the scope of these guidelines.
-
 单个关于浪费的例子少有意义，如果意义重大，专家通常很容易消除。
 然而，在代码库中大量传播的浪费可能很容易造成重大影响，而且专家并非总是像我们希望的那样可用。
 这条规则（以及支持它的更具体的规则）的目的是在使用C++之前消除大多数与之相关的浪费。
-之后，我们可以研究与算法和需求相关的浪费，但这超出了这些指南的范围。
+之后，我们可以研究与算法和需求相关的浪费，但这超出了本指南的范围。
 
 ##### Enforcement
 
 许多更具体的规则旨在简化和消除无端浪费的总体目标。
 
-* Flag an unused return value from a user-defined non-defaulted postfix `operator++` or `operator--` function. Prefer using the prefix form instead. (Note: "User-defined non-defaulted" is intended to reduce noise. Review this enforcement if it's still too noisy in practice.)
+* 标记如下函数中未使用的返回值：用户定义的非默认后缀`operator++`或`operator--`函数。更喜欢使用前缀形式。（注意：“用户定义的非默认”旨在减少噪音。如果在实践中噪音仍然太大，请检查此强制执行。）
+    * Vic： 也就是说，如果你用了后缀++/后缀--，却没有使用表达式的返回值，那么还是用前缀形式的比较好。
 
 
-### <a name="Rp-mutable"></a>P.10: Prefer immutable data to mutable data
-
-##### Reason
-
-It is easier to reason about constants than about variables.
-Something immutable cannot change unexpectedly.
-Sometimes immutability enables better optimization.
-You can't have a data race on a constant.
-
-See [Con: Constants and immutability](#S-const)
-
-### <a name="Rp-library"></a>P.11: Encapsulate messy constructs, rather than spreading through the code
+### <a name="Rp-mutable"></a>P.10: 与可变数据相比，更喜欢不可变数据
 
 ##### Reason
 
-Messy code is more likely to hide bugs and harder to write.
-A good interface is easier and safer to use.
-Messy, low-level code breeds more such code.
+关于常量的推理比关于变量的推理更容易。
+一些不变的东西不会意外地改变。
+有时，不变性可以实现更好的优化。
+常量上不会出现数据竞争。
+
+参见[Con: 常数与不变性](#S-const)
+
+### <a name="Rp-library"></a>P.11: 封装混乱的结构，而不是在代码中传播
+
+##### Reason
+
+凌乱的代码更容易隐藏bug，也更难编写。
+好的接口使用起来更容易、更安全。
+混乱、低级的代码会滋生更多这样的代码。
 
 ##### Example
 
-    int sz = 100;
-    int* p = (int*) malloc(sizeof(int) * sz);
-    int count = 0;
+```cpp
+int sz = 100;
+int* p = (int*) malloc(sizeof(int) * sz);
+int count = 0;
+// ...
+for (;;) {
+    // ... read an int into x, exit loop if end of file is reached ...
+    // ... check that x is valid ...
+    if (count == sz)
+        p = (int*) realloc(p, sizeof(int) * sz * 2);
+    p[count++] = x;
     // ...
-    for (;;) {
-        // ... read an int into x, exit loop if end of file is reached ...
-        // ... check that x is valid ...
-        if (count == sz)
-            p = (int*) realloc(p, sizeof(int) * sz * 2);
-        p[count++] = x;
-        // ...
-    }
+}
+```
 
-This is low-level, verbose, and error-prone.
-For example, we "forgot" to test for memory exhaustion.
-Instead, we could use `vector`:
+这是低级的、冗长的、容易出错的。
+例如，我们“忘记”测试内存用尽的情况。
+代替之，我们可以使用`vector`:
 
-    vector<int> v;
-    v.reserve(100);
-    // ...
-    for (int x; cin >> x; ) {
-        // ... check that x is valid ...
-        v.push_back(x);
-    }
-
+```cpp
+vector<int> v;
+v.reserve(100);
+// ...
+for (int x; cin >> x; ) {
+    // ... check that x is valid ...
+    v.push_back(x);
+}
+```
 ##### Note
 
-The standards library and the GSL are examples of this philosophy.
-For example, instead of messing with the arrays, unions, cast, tricky lifetime issues, `gsl::owner`, etc.,
-that are needed to implement key abstractions, such as `vector`, `span`, `lock_guard`, and `future`, we use the libraries
-designed and implemented by people with more time and expertise than we usually have.
-Similarly, we can and should design and implement more specialized libraries, rather than leaving the users (often ourselves)
-with the challenge of repeatedly getting low-level code well.
-This is a variant of the [subset of superset principle](#R0) that underlies these guidelines.
+标准库和GSL库就是本条哲学的例子。
+例如，我们使用由比我们通常拥有更多时间和专业知识的人设计和实现的库，而不是处理实现关键抽象所需的数组、联合、类型转换、棘手的生命周期问题、`gsl:：owner`等，比如`vector`、`span`、`lock_guard`和`future`。
+类似地，我们可以也应该设计和实现更专业的库，而不是让用户（通常是我们自己）面临反复获得底层代码的挑战。
+这是[超集子集原则](#R0)的一个变体，它是本指导方针的基础。
+
 
 ##### Enforcement
 
-* Look for "messy code" such as complex pointer manipulation and casting outside the implementation of abstractions.
+* 寻找“凌乱的代码”，比如复杂的指针操作和抽象实现之外的强制转换。
 
 
-### <a name="Rp-tools"></a>P.12: Use supporting tools as appropriate
+### <a name="Rp-tools"></a>P.12: 根据需要使用辅助工具
 
 ##### Reason
 
-There are many things that are done better "by machine".
-Computers don't tire or get bored by repetitive tasks.
-We typically have better things to do than repeatedly do routine tasks.
+有很多事情“通过机器”做得更好。
+计算机不会因重复性任务而感到厌倦。
+我们通常有比重复做常规任务更好的事情要做。
 
 ##### Example
 
-Run a static analyzer to verify that your code follows the guidelines you want it to follow.
+运行静态分析器来验证代码是否遵循了您希望它遵循的准则。
 
 ##### Note
 
-See
+参见
 
-* [Static analysis tools](???)
-* [Concurrency tools](#Rconc-tools)
-* [Testing tools](???)
+* [静态分析工具](???)
+* [并发工具](#Rconc-tools)
+* [测试工具](???)
 
-There are many other kinds of tools, such as source code repositories, build tools, etc.,
-but those are beyond the scope of these guidelines.
+还有很多其他种类的工具，比如源代码存储库、构建工具等等，
+但这些都超出了本指南的范围。
 
 ##### Note
 
-Be careful not to become dependent on over-elaborate or over-specialized tool chains.
-Those can make your otherwise portable code non-portable.
+小心不要依赖过于复杂或过于专业的工具链。
+这些可能会使原本可移植的代码变得不可移植。
 
 
-### <a name="Rp-lib"></a>P.13: Use support libraries as appropriate
+### <a name="Rp-lib"></a>P.13: 根据需要使用支持库
 
 ##### Reason
 
-Using a well-designed, well-documented, and well-supported library saves time and effort;
-its quality and documentation are likely to be greater than what you could do
-if the majority of your time must be spent on an implementation.
-The cost (time, effort, money, etc.) of a library can be shared over many users.
-A widely used library is more likely to be kept up-to-date and ported to new systems than an individual application.
-Knowledge of a widely-used library can save time on other/future projects.
-So, if a suitable library exists for your application domain, use it.
+使用一个设计良好、记录良好、支持良好的库可以节省时间和精力；
+如果大部分时间都必须花在实现上，那么它的质量和文档可能会超过您所能做的。
+支持库的成本（时间、精力、金钱等）可以由许多用户分担。
+与单个应用程序相比，广泛使用的库更有可能保持最新并移植到新系统。
+了解广泛使用的支持库可以节省其他/未来项目的时间。
+因此，如果存在适合您的应用程序领域的库，请使用它。
 
 ##### Example
 
-    std::sort(begin(v), end(v), std::greater<>());
+```cpp
+std::sort(begin(v), end(v), std::greater<>());
+```
 
-Unless you are an expert in sorting algorithms and have plenty of time,
-this is more likely to be correct and to run faster than anything you write for a specific application.
-You need a reason not to use the standard library (or whatever foundational libraries your application uses) rather than a reason to use it.
-
-##### Note
-
-By default use
-
-* The [ISO C++ Standard Library](#S-stdlib)
-* The [Guidelines Support Library](#S-gsl)
+除非你是排序算法方面的专家并且有足够的时间，
+否则上述代码可能是更正确的，并且比你为特定应用程序编写的任何程序运行得更快。
+您需要一个不使用标准库（或应用程序使用的任何基础库）的理由，而不是使用它的理由。
 
 ##### Note
 
-If no well-designed, well-documented, and well-supported library exists for an important domain,
-maybe you should design and implement it, and then use it.
+默认使用
+
+* [ISO C++标准库](#S-stdlib)
+* [指南支持库（GSL库）](#S-gsl)
+
+##### Note
+
+如果一个重要的领域没有设计良好、文档良好、支持良好的库，
+也许你应该设计并实现它，然后使用它。
+
+# <a name="S-interfaces"></a>I: Interfaces接口
 
 
-# <a name="S-interfaces"></a>I: Interfaces
+接口是程序两部分之间的契约。准确地说明对服务供应商和服务用户的期望是至关重要的。
+拥有良好的（易于理解、鼓励高效使用、不易出错、支持测试等）接口可能是代码组织最重要的一个方面。
 
-An interface is a contract between two parts of a program. Precisely stating what is expected of a supplier of a service and a user of that service is essential.
-Having good (easy-to-understand, encouraging efficient use, not error-prone, supporting testing, etc.) interfaces is probably the most important single aspect of code organization.
+接口规则摘要：
 
-Interface rule summary:
+* [I.1: 使接口明确](#Ri-explicit)
+* [I.2: 避免非`const`全局变量](#Ri-global)
+* [I.3: 避免使用单例](#Ri-singleton)
+* [I.4: 使接口精确且强类型化](#Ri-typed)
+* [I.5: 说明前提条件（如有）](#Ri-pre)
+* [I.6: 更喜欢用`Expects()`来表示前提条件](#Ri-expects)
+* [I.7: 说明后置条件](#Ri-post)
+* [I.8: 更喜欢用`Ensures()`来表示后置条件](#Ri-ensures)
+* [I.9: 如果接口是模板，请使用概念（`concept`）记录其参数](#Ri-concepts)
+* [I.10: 使用异常来表示无法执行所需任务](#Ri-except)
+* [I.11: 永远不要通过原始指针（`T*`）或引用（`T&`）转移所有权](#Ri-raw)
+* [I.12: 将不能为空的指针声明为`not_null`](#Ri-nullptr)
+* [I.13: 不要将数组作为单个指针传递](#Ri-array)
+* [I.22: 避免全局对象的复杂初始化](#Ri-global-init)
+* [I.23: 使函数参数的数量保持较少](#Ri-nargs)
+* [I.24: 避免使相邻的参数可以由相同的参数以不同的顺序调用，从而导致其他意义](#Ri-unrelated)
+* [I.25: 与类层次结构相比，更喜欢使用空抽象类作为接口](#Ri-abstract)
+* [I.26: 如果需要交叉编译器ABI，请使用C风格的子集的C++](#Ri-abi)
+* [I.27: 要获得稳定的库ABI，请考虑Pimpl惯用法](#Ri-pimpl)
+* [I.30: 封装违反规则](#Ri-encapsulate)
 
-* [I.1: Make interfaces explicit](#Ri-explicit)
-* [I.2: Avoid non-`const` global variables](#Ri-global)
-* [I.3: Avoid singletons](#Ri-singleton)
-* [I.4: Make interfaces precisely and strongly typed](#Ri-typed)
-* [I.5: State preconditions (if any)](#Ri-pre)
-* [I.6: Prefer `Expects()` for expressing preconditions](#Ri-expects)
-* [I.7: State postconditions](#Ri-post)
-* [I.8: Prefer `Ensures()` for expressing postconditions](#Ri-ensures)
-* [I.9: If an interface is a template, document its parameters using concepts](#Ri-concepts)
-* [I.10: Use exceptions to signal a failure to perform a required task](#Ri-except)
-* [I.11: Never transfer ownership by a raw pointer (`T*`) or reference (`T&`)](#Ri-raw)
-* [I.12: Declare a pointer that must not be null as `not_null`](#Ri-nullptr)
-* [I.13: Do not pass an array as a single pointer](#Ri-array)
-* [I.22: Avoid complex initialization of global objects](#Ri-global-init)
-* [I.23: Keep the number of function arguments low](#Ri-nargs)
-* [I.24: Avoid adjacent parameters that can be invoked by the same arguments in either order with different meaning](#Ri-unrelated)
-* [I.25: Prefer empty abstract classes as interfaces to class hierarchies](#Ri-abstract)
-* [I.26: If you want a cross-compiler ABI, use a C-style subset](#Ri-abi)
-* [I.27: For stable library ABI, consider the Pimpl idiom](#Ri-pimpl)
-* [I.30: Encapsulate rule violations](#Ri-encapsulate)
+**另见**:
 
-**See also**:
+* [F: 函数](#S-functions)
+* [C.concrete: 具体类型](#SS-concrete)
+* [C.hier: 类层次结构](#SS-hier)
+* [C.over: 重载运算符和被重载的运算符](#SS-overload)
+* [C.con: 容器和其他资源句柄](#SS-containers)
+* [E: 错误处理](#S-errors)
+* [T: 模板和泛型编程](#S-templates)
 
-* [F: Functions](#S-functions)
-* [C.concrete: Concrete types](#SS-concrete)
-* [C.hier: Class hierarchies](#SS-hier)
-* [C.over: Overloading and overloaded operators](#SS-overload)
-* [C.con: Containers and other resource handles](#SS-containers)
-* [E: Error handling](#S-errors)
-* [T: Templates and generic programming](#S-templates)
-
-### <a name="Ri-explicit"></a>I.1: Make interfaces explicit
+### <a name="Ri-explicit"></a>I.1: 使接口明确
 
 ##### Reason
 
-Correctness. Assumptions not stated in an interface are easily overlooked and hard to test.
+准确原则。接口中没有说明的假设很容易被忽略，也很难测试。
 
 ##### Example, bad
 
-Controlling the behavior of a function through a global (namespace scope) variable (a call mode) is implicit and potentially confusing. For example:
+通过全局（名称空间范围）变量（调用模式）控制函数的行为是隐式的，可能会令人困惑。例如：
 
-    int round(double d)
-    {
-        return (round_up) ? ceil(d) : d;    // don't: "invisible" dependency
-    }
+```cpp
+int round(double d)
+{
+    return (round_up) ? ceil(d) : d;    // don't: "invisible" dependency
+}
+```
 
-It will not be obvious to a caller that the meaning of two calls of `round(7.2)` might give different results.
+调用者看不出两次`round(7.2)`可能会产生不同的结果。
 
 ##### Exception
 
-Sometimes we control the details of a set of operations by an environment variable, e.g., normal vs. verbose output or debug vs. optimized.
-The use of a non-local control is potentially confusing, but controls only implementation details of otherwise fixed semantics.
+有时，我们通过环境变量控制一组操作的细节，例如，正常输出与详细输出，调试输出与优化输出。
+非本地控件的使用可能会令人困惑，但它只控制其他固定语义的实现细节。
 
 ##### Example, bad
 
 Reporting through non-local variables (e.g., `errno`) is easily ignored. For example:
 
-    // don't: no test of printf's return value
-    fprintf(connection, "logging: %d %d %d\n", x, y, s);
+通过非局部变量（例如`errno`）进行报告很容易被忽略。例如：
 
-What if the connection goes down so that no logging output is produced? See I.???.
+```cpp
+// don't: no test of printf's return value
+fprintf(connection, "logging: %d %d %d\n", x, y, s);
+```
 
-**Alternative**: Throw an exception. An exception cannot be ignored.
+如果连接中断，因此不会产生日志输出，该怎么办？参见I.???。
 
-**Alternative formulation**: Avoid passing information across an interface through non-local or implicit state.
-Note that non-`const` member functions pass information to other member functions through their object's state.
+**备选**: 抛出异常。不能忽视异常。
 
-**Alternative formulation**: An interface should be a function or a set of functions.
-Functions can be function templates and sets of functions can be classes or class templates.
+**替代表述**: 避免通过非本地或隐式状态跨接口传递信息。
+请注意，非`const`成员函数通过其对象的状态（成员变量的值）将信息传递给其他成员函数。
+
+**替代表述**: 接口应该是一个函数或一组函数。
+函数可以是函数模板，函数集可以是类或类模板。
 
 ##### Enforcement
 
-* (Simple) A function should not make control-flow decisions based on the values of variables declared at namespace scope.
-* (Simple) A function should not write to variables declared at namespace scope.
+* （很简单）函数不应该基于在命名空间范围内声明的变量值来做出控制流决策。
+* （很简单）函数不应写入命名空间范围中声明的变量。
 
-### <a name="Ri-global"></a>I.2: Avoid non-`const` global variables
+### <a name="Ri-global"></a>I.2:  避免非`const`全局变量
 
 ##### Reason
 
-Non-`const` global variables hide dependencies and make the dependencies subject to unpredictable changes.
+非`const`全局变量隐藏依赖项，并使依赖项受到不可预测的更改的影响。
 
 ##### Example
 
-    struct Data {
-        // ... lots of stuff ...
-    } data;            // non-const data
+```cpp
+struct Data {
+    // ... lots of stuff ...
+} data;            // non-const data
 
-    void compute()     // don't
-    {
-        // ... use data ...
-    }
+void compute()     // don't
+{
+    // ... use data ...
+}
 
-    void output()     // don't
-    {
-        // ... use data ...
-    }
+void output()     // don't
+{
+    // ... use data ...
+}
+```
 
-Who else might modify `data`?
+还有谁可能修改`data`？
 
-**Warning**: The initialization of global objects is not totally ordered.
-If you use a global object initialize it with a constant.
-Note that it is possible to get undefined initialization order even for `const` objects.
+**警告**: 全局对象的初始化不是完全有序的。
+如果使用全局对象，请使用常量初始化它。
+请注意，即使对于'const'对象，也可能获得未定义的初始化顺序。
 
 ##### Exception
 
-A global object is often better than a singleton.
+全局对象通常比单例好。
 
 ##### Note
 
-Global constants are useful.
+全局常量很有用。
 
 ##### Note
 
-The rule against global variables applies to namespace scope variables as well.
+针对全局变量的规则也适用于命名空间范围变量。
 
-**Alternative**: If you use global (more generally namespace scope) data to avoid copying, consider passing the data as an object by reference to `const`.
-Another solution is to define the data as the state of some object and the operations as member functions.
+**备选**: 如果使用全局（通常是命名空间范围）数据来避免复制，请考虑通过`const`引用将数据作为对象传递。
+另一种解决方案是将数据定义为某个对象的状态，将操作定义为成员函数。
 
-**Warning**: Beware of data races: If one thread can access non-local data (or data passed by reference) while another thread executes the callee, we can have a data race.
-Every pointer or reference to mutable data is a potential data race.
+**警告**: 当心数据竞争：如果一个线程可以访问非本地数据（或通过引用传递的数据），而另一个线程执行被调用方，那么可能出现数据竞争。
+每个指向可变数据的指针或引用都是潜在的数据竞争。
 
-Using global pointers or references to access and change non-const, and otherwise non-global,
-data isn't a better alternative to non-const global variables since that doesn't solve the issues of hidden dependencies or potential race conditions.
-
-##### Note
-
-You cannot have a race condition on immutable data.
-
-**References**: See the [rules for calling functions](#SS-call).
+使用全局指针或引用来访问和更改非常量以及非全局数据并不是非常量全局变量的更好替代方案，因为这不能解决隐藏依赖关系或潜在竞争条件的问题。
 
 ##### Note
 
-The rule is "avoid", not "don't use." Of course there will be (rare) exceptions, such as `cin`, `cout`, and `cerr`.
+不可变数据不会产生竞争。
+
+**参考**: 参见[函数调用规则](#SS-call)。
+
+##### Note
+
+本规则是“避免”，而不是“不使用”。 当然会有（罕见的）例外，例如`cin`、`cout`和`cerr`。
 
 ##### Enforcement
 
-(Simple) Report all non-`const` variables declared at namespace scope and global pointers/references to non-const data.
+（简单）报告在命名空间范围内声明的所有非const变量以及对非const数据的全局指针/引用。
 
 
-### <a name="Ri-singleton"></a>I.3: Avoid singletons
+### <a name="Ri-singleton"></a>I.3: 避免使用单例
 
 ##### Reason
 
-Singletons are basically complicated global objects in disguise.
+单例基本上是变相的复杂全局对象。
 
 ##### Example
 
-    class Singleton {
-        // ... lots of stuff to ensure that only one Singleton object is created,
-        // that it is initialized properly, etc.
-    };
+```cpp
+class Singleton {
+    // ... 要确保只创建一个单例对象、正确初始化它等等，需要做很多工作。
+};
+```
 
-There are many variants of the singleton idea.
-That's part of the problem.
+单例实现有很多变体。
+这是问题的一部分。
 
 ##### Note
 
-If you don't want a global object to change, declare it `const` or `constexpr`.
+如果你不想更改全局对象，请将其声明为`const`或`constexpr`。
 
 ##### Exception
 
-You can use the simplest "singleton" (so simple that it is often not considered a singleton) to get initialization on first use, if any:
+您可以使用最简单的“单例”（如此简单以至于它通常不被视为单例）在首次使用时进行初始化，如果有的话：
 
-    X& myX()
-    {
-        static X my_x {3};
-        return my_x;
-    }
+```cpp
+X& myX()
+{
+    static X my_x {3};
+    return my_x;
+}
+```
 
-This is one of the most effective solutions to problems related to initialization order.
-In a multi-threaded environment, the initialization of the static object does not introduce a race condition
-(unless you carelessly access a shared object from within its constructor).
+这是解决初始化顺序相关问题的最有效方法之一。
+在多线程环境中，静态对象的初始化不会引入竞争条件
+（除非您不小心从其构造函数中访问了共享对象）。
 
-Note that the initialization of a local `static` does not imply a race condition.
-However, if the destruction of `X` involves an operation that needs to be synchronized we must use a less simple solution.
-For example:
+请注意，本地`static`的初始化并不意味着竞争条件。
+然而，如果销毁`X`涉及需要同步的操作，我们必须使用不那么简单的解决方案。
+例如：
 
-    X& myX()
-    {
-        static auto p = new X {3};
-        return *p;  // potential leak
-    }
+```cpp
+X& myX()
+{
+    static auto p = new X {3};
+    return *p;  // 潜在泄漏
+}
+```
 
-Now someone must `delete` that object in some suitably thread-safe way.
-That's error-prone, so we don't use that technique unless
+现在有人必须以某种适当的线程安全方式“删除”该对象。
+这很容易出错，所以我们不使用这种技术，除非:
 
-* `myX` is in multi-threaded code,
-* that `X` object needs to be destroyed (e.g., because it releases a resource), and
-* `X`'s destructor's code needs to be synchronized.
+* `myX`在多线程代码中,
+* `X`对象需要被销毁（例如，因为它释放了资源），并且
+* `X`的析构函数代码需要同步。
 
-If you, as many do, define a singleton as a class for which only one object is created, functions like `myX` are not singletons, and this useful technique is not an exception to the no-singleton rule.
+如果您像许多人一样将单例定义为只为其创建一个对象的类，那么像`myX`这样的函数就不是单例，而且这种有用的技术也不是本条规则（避免单例）的例外。
 
 ##### Enforcement
 
-Very hard in general.
+总体来说非常难。
 
-* Look for classes with names that include `singleton`.
-* Look for classes for which only a single object is created (by counting objects or by examining constructors).
-* If a class X has a public static function that contains a function-local static of the class' type X and returns a pointer or reference to it, ban that.
+* 查找名称中包含`singleton`的类。
+* 寻找只创建一个对象的类（通过计算对象或检查构造函数）。
+* 如果类X有一个公共静态函数，该函数包含类X类型的本地静态变量，并返回指向该变量的指针或引用，请禁用该函数。
 
 ### <a name="Ri-typed"></a>I.4: Make interfaces precisely and strongly typed
 
