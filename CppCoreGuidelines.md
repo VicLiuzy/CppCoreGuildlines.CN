@@ -626,14 +626,13 @@ while (i < v.size()) {
 ```cpp
 for (const auto& x : v) { /* do something with the value of x */ }
 ```
-Now, there is no explicit mention of the iteration mechanism, and the loop operates on a reference to `const` elements so that accidental modification cannot happen. If modification is desired, say so:
+
 现在，没有提到明确的迭代机制，循环运行在`const`元素的引用上，因此不会发生意外修改。如果需要修改，就这样写：
 
 ```cpp
 for (auto& x : v) { /* modify x */ }
 ```
 有关`for`语句的更多详细信息，请参见[ES.71](#Res-for-range).
-Sometimes better still, use a named algorithm. This example uses the `for_each` from the Ranges TS because it directly expresses the intent:
 有时更好的做法是使用命名算法。本例使用range TS中的`for_each`，因为它直接表达了意图：
 
 ```cpp
@@ -1482,302 +1481,340 @@ X& myX()
 * 寻找只创建一个对象的类（通过计算对象或检查构造函数）。
 * 如果类X有一个公共静态函数，该函数包含类X类型的本地静态变量，并返回指向该变量的指针或引用，请禁用该函数。
 
-### <a name="Ri-typed"></a>I.4: Make interfaces precisely and strongly typed
+### <a name="Ri-typed"></a>I.4: 使接口精确且强类型化
 
 ##### Reason
 
-Types are the simplest and best documentation, improve legibility due to their well-defined meaning, and are checked at compile time.
-Also, precisely typed code is often optimized better.
+类型是最简单的，且最容易文档化的。由于其定义明确的含义，可以提高可读性，并且在编译时进行检查。
+此外，精确类型的代码通常会得到更好的优化。
 
 ##### Example, don't
 
-Consider:
+考虑：
 
-    void pass(void* data);    // weak and under qualified type void* is suspicious
+```cpp
+void pass(void* data);    // 弱且不合格的类型void*令人疑惑
+```
 
-Callers are unsure what types are allowed and if the data may
-be mutated as `const` is not specified. Note all pointer types
-implicitly convert to `void*`, so it is easy for callers to provide this value.
+调用者不确定允许哪些类型，且由于未指定`const`，无法确定数据是否会发生改变。
+注意：所有指针类型都隐式转换为`void*`，因此调用者很容易提供这个值。
 
-The callee must `static_cast` data to an unverified type to use it.
-That is error-prone and verbose.
+被调用方必须使用`static_cast`将数据转换为未经验证的类型才能使用它。
+这很容易出错，而且冗长。
 
-Only use `const void*` for passing in data in designs that are indescribable in C++. Consider using a `variant` or a pointer to base instead.
+在C++中无法描述的设计中，只能使用`const void*`来传递数据。考虑使用`std::variant`(C++ 17)或指向base的指针。
 
-**Alternative**: Often, a template parameter can eliminate the `void*` turning it into a `T*` or `T&`.
-For generic code these `T`s can be general or concept constrained template parameters.
-
-##### Example, bad
-
-Consider:
-
-    draw_rect(100, 200, 100, 500); // what do the numbers specify?
-
-    draw_rect(p.x, p.y, 10, 20); // what units are 10 and 20 in?
-
-It is clear that the caller is describing a rectangle, but it is unclear what parts they relate to. Also, an `int` can carry arbitrary forms of information, including values of many units, so we must guess about the meaning of the four `int`s. Most likely, the first two are an `x`,`y` coordinate pair, but what are the last two?
-
-Comments and parameter names can help, but we could be explicit:
-
-    void draw_rectangle(Point top_left, Point bottom_right);
-    void draw_rectangle(Point top_left, Size height_width);
-
-    draw_rectangle(p, Point{10, 20});  // two corners
-    draw_rectangle(p, Size{10, 20});   // one corner and a (height, width) pair
-
-Obviously, we cannot catch all errors through the static type system
-(e.g., the fact that a first argument is supposed to be a top-left point is left to convention (naming and comments)).
+**备选**: 通常，模板参数可以消除`void*`，将其转换为`T*`或`T&`。
+对于泛型代码，这些`T`可以是通用的或概念约束的模板参数。
 
 ##### Example, bad
 
-Consider:
+考虑：
 
-    set_settings(true, false, 42); // what do the numbers specify?
+```cpp
+draw_rect(100, 200, 100, 500); // 这些数字表示什么？
+draw_rect(p.x, p.y, 10, 20); // 10和20是什么单位？
+```
 
-The parameter types and their values do not communicate what settings are being specified or what those values mean.
+很明显，调用方描述的是一个矩形，但不清楚它们与哪些部分有关。此外，`int`可以携带任意形式的信息，包括许多单位的值，因此我们必须猜测四个`int`的含义。前两个很可能是`x`、`y`坐标对，但最后两个是什么？
 
-This design is more explicit, safe and legible:
+注释和参数名称可能会有所帮助，但我们可以明确：
 
-    alarm_settings s{};
-    s.enabled = true;
-    s.displayMode = alarm_settings::mode::spinning_light;
-    s.frequency = alarm_settings::every_10_seconds;
-    set_settings(s);
+```cpp
+void draw_rectangle(Point top_left, Point bottom_right);
+void draw_rectangle(Point top_left, Size height_width);
 
-For the case of a set of boolean values consider using a flags `enum`; a pattern that expresses a set of boolean values.
+draw_rectangle(p, Point{10, 20});  // 矩阵的两个顶点坐标
+draw_rectangle(p, Size{10, 20});   // 一个顶点坐标与一个(height, width)对
+```
 
-    enable_lamp_options(lamp_option::on | lamp_option::animate_state_transitions);
+显然，我们无法通过静态类型系统捕获所有错误
+（例如，第一个参数应该是左上角，这一事实留待约定（命名和注释））。
+
+##### Example, bad
+
+考虑：
+
+```cpp
+set_settings(true, false, 42); // 数字代表了什么？
+```
+
+参数类型及其值不传达指定的设置或这些值的含义。
+
+这种设计更加明确、安全、清晰：
+
+```cpp
+alarm_settings s{};
+s.enabled = true;
+s.displayMode = alarm_settings::mode::spinning_light;
+s.frequency = alarm_settings::every_10_seconds;
+set_settings(s);
+```
+
+对于一组布尔值，考虑使用标志`enum`；表示一组布尔值的模式。
+
+```cpp
+enable_lamp_options(lamp_option::on | lamp_option::animate_state_transitions);
+```
 
 ##### Example, bad
 
 In the following example, it is not clear from the interface what `time_to_blink` means: Seconds? Milliseconds?
+在下面的例子中，从接口中无法明确`time_to_blink`是什么意思：秒？毫秒？
 
-    void blink_led(int time_to_blink) // bad -- the unit is ambiguous
-    {
-        // ...
-        // do something with time_to_blink
-        // ...
-    }
+```cpp
+void blink_led(int time_to_blink) // bad -- the unit is ambiguous
+{
+    // ...
+    // do something with time_to_blink
+    // ...
+}
 
-    void use()
-    {
-        blink_led(2);
-    }
+void use()
+{
+    blink_led(2);
+}
+```
 
 ##### Example, good
 
-`std::chrono::duration` types helps making the unit of time duration explicit.
+`std::chrono::duration`类型有助于明确表示持续时间单位。
 
-    void blink_led(milliseconds time_to_blink) // good -- the unit is explicit
-    {
-        // ...
-        // do something with time_to_blink
-        // ...
-    }
+```cpp
+void blink_led(milliseconds time_to_blink) // good -- the unit is explicit
+{
+    // ...
+    // do something with time_to_blink
+    // ...
+}
 
-    void use()
-    {
-        blink_led(1500ms);
-    }
+void use()
+{
+    blink_led(1500ms);
+}
+```
 
-The function can also be written in such a way that it will accept any time duration unit.
+函数的编写方式也可以使其接受任何持续时间单位。
 
-    template<class rep, class period>
-    void blink_led(duration<rep, period> time_to_blink) // good -- accepts any unit
-    {
-        // assuming that millisecond is the smallest relevant unit
-        auto milliseconds_to_blink = duration_cast<milliseconds>(time_to_blink);
-        // ...
-        // do something with milliseconds_to_blink
-        // ...
-    }
+```cpp
+template<class rep, class period>
+void blink_led(duration<rep, period> time_to_blink) // good -- accepts anyunit
+{
+    // 假设毫秒是最小的相关单位
+    auto milliseconds_to_blink = duration_cast<milliseconds>(time_to_blink);
+    // ...
+    // do something with milliseconds_to_blink
+    // ...
+}
 
-    void use()
-    {
-        blink_led(2s);
-        blink_led(1500ms);
-    }
+void use()
+{
+    blink_led(2s);
+    blink_led(1500ms);
+}
+```
 
 ##### Enforcement
 
-* (Simple) Report the use of `void*` as a parameter or return type.
-* (Simple) Report the use of more than one `bool` parameter.
-* (Hard to do well) Look for functions that use too many primitive type arguments.
+* （简单）报告使用`void*`作为参数或返回类型。
+* （简单）报告多个`bool`参数的使用。
+* （很难做好）查找使用太多原始类型参数的函数。
 
-### <a name="Ri-pre"></a>I.5: State preconditions (if any)
+### <a name="Ri-pre"></a>I.5: 说明前提条件（如有）
 
 ##### Reason
 
-Arguments have meaning that might constrain their proper use in the callee.
+参数的含义可能会限制它们在被调用方中的正确使用。
 
 ##### Example
 
-Consider:
+考虑：
 
-    double sqrt(double x);
+```cpp
+double sqrt(double x);
+```
 
-Here `x` must be non-negative. The type system cannot (easily and naturally) express that, so we must use other means. For example:
+这里的`x`必须是非负的。类型系统无法（轻松自然地）表达这一点，因此我们必须使用其他方式。例如：
 
-    double sqrt(double x); // x must be non-negative
+```cpp
+double sqrt(double x); // x must be non-negative
+```
 
-Some preconditions can be expressed as assertions. For example:
+一些先决条件可以表示为断言。例如：
 
-    double sqrt(double x) { Expects(x >= 0); /* ... */ }
+```cpp
+double sqrt(double x) { Expects(x >= 0); /* ... */ }
+```
 
-Ideally, that `Expects(x >= 0)` should be part of the interface of `sqrt()` but that's not easily done. For now, we place it in the definition (function body).
+理想情况下，`Expects(x>=0)`应该是`sqrt()`接口的一部分，但这并不容易实现。现在，我们把它放在定义（函数体）中。
 
-**References**: `Expects()` is described in [GSL](#S-gsl).
+**参考**: `Expects()` 在[GSL](#S-gsl)中说明.
 
 ##### Note
 
-Prefer a formal specification of requirements, such as `Expects(p);`.
-If that is infeasible, use English text in comments, such as `// the sequence [p:q) is ordered using <`.
+更喜欢正式的需求规范，比如`Expects(p);`。
+如果不可行，请在注释中使用英文文本，例如`// the sequence [p:q) is ordered using <`。
 
 ##### Note
 
-Most member functions have as a precondition that some class invariant holds.
-That invariant is established by a constructor and must be reestablished upon exit by every member function called from outside the class.
-We don't need to mention it for each member function.
+大多数成员函数都有一个先决条件，即某些类不变性。
+该不变量是由构造函数建立的，并且必须由从类外部调用的每个成员函数在退出时重新建立。
+我们不需要在每个成员函数中都提及它。
 
 ##### Enforcement
 
-(Not enforceable)
+（不可执行）
 
-**See also**: The rules for passing pointers. ???
+**另见**: 指针传参的规则 ???
 
-### <a name="Ri-expects"></a>I.6: Prefer `Expects()` for expressing preconditions
+### <a name="Ri-expects"></a>I.6: 更喜欢用`Expects()`来表示前提条件
 
 ##### Reason
 
-To make it clear that the condition is a precondition and to enable tool use.
+明确此条件是前提条件，并允许使用工具。
 
 ##### Example
 
-    int area(int height, int width)
-    {
-        Expects(height > 0 && width > 0);            // good
-        if (height <= 0 || width <= 0) my_error();   // obscure
-        // ...
-    }
+```cpp
+int area(int height, int width)
+{
+    Expects(height > 0 && width > 0);            // good
+    if (height <= 0 || width <= 0) my_error();   // obscure
+    // ...
+}
+```
 
 ##### Note
 
-Preconditions can be stated in many ways, including comments, `if`-statements, and `assert()`.
-This can make them hard to distinguish from ordinary code, hard to update, hard to manipulate by tools, and might have the wrong semantics (do you always want to abort in debug mode and check nothing in productions runs?).
+前提条件可以用多种方式陈述，包括注释、`if`语句和`assert()`。
+这会使它们很难与普通代码区分开来，很难更新，很难通过工具进行操作，并且可能具有错误的语义（是否总是希望在调试模式下中止，并在产品运行时不检查任何内容？）。
 
 ##### Note
 
-Preconditions should be part of the interface rather than part of the implementation,
-but we don't yet have the language facilities to do that.
-Once language support becomes available (e.g., see the [contract proposal](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0380r1.pdf)) we will adopt the standard version of preconditions, postconditions, and assertions.
+前提条件应该是接口的一部分，而不是实现的一部分，
+但我们还没有这样做的语言设施。
+一旦语言支持可用（例如，参见[contract proposal](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0380r1.pdf))我们将采用前提条件、后置条件和断言的标准版本。
 
 ##### Note
 
-`Expects()` can also be used to check a condition in the middle of an algorithm.
+`Expects()`还可用于检查算法中间的条件。
 
 ##### Note
 
-No, using `unsigned` is not a good way to sidestep the problem of [ensuring that a value is non-negative](#Res-nonnegative).
+不，使用`unsigned`并不是回避[确保值非负](#Res-nonnegative)问题的好方法。
 
 ##### Enforcement
 
-(Not enforceable) Finding the variety of ways preconditions can be asserted is not feasible. Warning about those that can be easily identified (`assert()`) has questionable value in the absence of a language facility.
+（不可执行）寻找各种各样的方式来断言前提条件是不可行的。在没有语言工具的情况下，那些容易识别的警告（`assert()`）的价值值得怀疑。
 
-### <a name="Ri-post"></a>I.7: State postconditions
+### <a name="Ri-post"></a>I.7: 说明后置条件
 
 ##### Reason
 
-To detect misunderstandings about the result and possibly catch erroneous implementations.
+检测对结果的误解，并可能捕获错误的实现。
 
 ##### Example, bad
 
-Consider:
+考虑：
 
-    int area(int height, int width) { return height * width; }  // bad
+```cpp
+int area(int height, int width) { return height * width; }  // bad
+```
 
-Here, we (incautiously) left out the precondition specification, so it is not explicit that height and width must be positive.
-We also left out the postcondition specification, so it is not obvious that the algorithm (`height * width`) is wrong for areas larger than the largest integer.
-Overflow can happen.
-Consider using:
+在这里，我们（不小心）遗漏了前提条件规范，因此没有明确说明高度和宽度必须为正。
+我们还省略了后置条件说明，因此算法（`height * width`）可能由于大于最大整数范围导致的错误并不明显。
+溢出可能会发生。
+考虑使用：
 
-    int area(int height, int width)
-    {
-        auto res = height * width;
-        Ensures(res > 0);
-        return res;
-    }
+```cpp
+int area(int height, int width)
+{
+    auto res = height * width;
+    Ensures(res > 0);
+    return res;
+}
+```
 
 ##### Example, bad
 
-Consider a famous security bug:
+考虑一个著名的安全漏洞：
 
-    void f()    // problematic
-    {
-        char buffer[MAX];
-        // ...
-        memset(buffer, 0, sizeof(buffer));
-    }
+```cpp
+void f()    // 有问题的
+{
+    char buffer[MAX];
+    // ...
+    memset(buffer, 0, sizeof(buffer));
+}
+```
 
-There was no postcondition stating that the buffer should be cleared and the optimizer eliminated the apparently redundant `memset()` call:
+没有后置条件表明应该清除缓冲区，优化器消除了明显冗余的'memset（）'调用：
 
-    void f()    // better
-    {
-        char buffer[MAX];
-        // ...
-        memset(buffer, 0, sizeof(buffer));
-        Ensures(buffer[0] == 0);
-    }
+```cpp
+void f()    // better
+{
+    char buffer[MAX];
+    // ...
+    memset(buffer, 0, sizeof(buffer));
+    Ensures(buffer[0] == 0);
+}
+```
 
 ##### Note
 
-Postconditions are often informally stated in a comment that states the purpose of a function; `Ensures()` can be used to make this more systematic, visible, and checkable.
+后置条件通常在说明功能目的的注释中非正式地陈述；`Ensures()`可用于使其更加系统化、可见和可检查。
 
 ##### Note
 
-Postconditions are especially important when they relate to something that is not directly reflected in a returned result, such as a state of a data structure used.
+当后置条件与返回结果中未直接反映的内容（例如所用数据结构的状态）相关时，后置条件尤其重要。
 
 ##### Example
 
-Consider a function that manipulates a `Record`, using a `mutex` to avoid race conditions:
+考虑一个操纵`Record`的函数，它使用`mutex`来避免竞争条件：
 
-    mutex m;
+```cpp
+mutex m;
 
-    void manipulate(Record& r)    // don't
-    {
-        m.lock();
-        // ... no m.unlock() ...
-    }
+void manipulate(Record& r)    // don't
+{
+    m.lock();
+    // ... no m.unlock() ...
+}
+```
 
-Here, we "forgot" to state that the `mutex` should be released, so we don't know if the failure to ensure release of the `mutex` was a bug or a feature.
-Stating the postcondition would have made it clear:
+在这里，我们“忘记”声明应该释放`mutex`，所以我们不知道未能确保释放`mutex`是一个错误还是一个功能。
+说明后置条件会让人明白：
 
-    void manipulate(Record& r)    // postcondition: m is unlocked upon exit
-    {
-        m.lock();
-        // ... no m.unlock() ...
-    }
+```cpp
+void manipulate(Record& r)    // postcondition: m is unlocked upon exit
+{
+    m.lock();
+    // ... no m.unlock() ...
+}
+```
 
-The bug is now obvious (but only to a human reading comments).
+这个漏洞现在很明显（但只有阅读注释的人才能看到）。
 
-Better still, use [RAII](#Rr-raii) to ensure that the postcondition ("the lock must be released") is enforced in code:
+更好的是，使用[RAII](#Rr-raii)确保后置条件（“锁必须被释放”）在代码中强制执行：
 
-    void manipulate(Record& r)    // best
-    {
-        lock_guard<mutex> _ {m};
-        // ...
-    }
+```cpp
+void manipulate(Record& r)    // best
+{
+    lock_guard<mutex> _ {m};
+    // ...
+}
+```
 
 ##### Note
 
-Ideally, postconditions are stated in the interface/declaration so that users can easily see them.
-Only postconditions related to the users can be stated in the interface.
-Postconditions related only to internal state belongs in the definition/implementation.
+理想情况下，在接口/声明中声明后置条件，以便用户可以轻松看到它们。
+接口中只能说明与用户相关的后置条件。
+仅与内部状态相关的后置条件属于定义/实现。
 
 ##### Enforcement
 
-(Not enforceable) This is a philosophical guideline that is infeasible to check
-directly in the general case. Domain specific checkers (like lock-holding
-checkers) exist for many toolchains.
+（不可强制执行）这是一个哲学准则，在一般情况下无法直接检查。
+许多工具链都存在特定于域的检查器（如锁定检查器）。
 
 ### <a name="Ri-ensures"></a>I.8: Prefer `Ensures()` for expressing postconditions
 
