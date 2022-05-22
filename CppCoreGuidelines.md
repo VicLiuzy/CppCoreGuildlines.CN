@@ -1284,11 +1284,11 @@ std::sort(begin(v), end(v), std::greater<>());
 * [I.13: 不要将数组作为单个指针传递](#Ri-array)
 * [I.22: 避免全局对象的复杂初始化](#Ri-global-init)
 * [I.23: 使函数参数的数量保持较少](#Ri-nargs)
-* [I.24: 避免使相邻的参数可以由相同的参数以不同的顺序调用，从而导致其他意义](#Ri-unrelated)
+* [I.24: 避免使相邻的参数可以由相同的参数以不同的顺序调用，从而导致不同意义](#Ri-unrelated)
 * [I.25: 与类层次结构相比，更喜欢使用空抽象类作为接口](#Ri-abstract)
 * [I.26: 如果需要交叉编译器ABI，请使用C风格的子集的C++](#Ri-abi)
 * [I.27: 要获得稳定的库ABI，请考虑Pimpl惯用法](#Ri-pimpl)
-* [I.30: 封装违反规则](#Ri-encapsulate)
+* [I.30: 封装违反规则的部分](#Ri-encapsulate)
 
 **另见**:
 
@@ -2042,7 +2042,6 @@ int length(const char* p);            // we must assume that p can be nullptr
 
 ##### Note
 
-The assumption that the pointer to `char` pointed to a C-style string (a zero-terminated string of characters) was still implicit, and a potential source of confusion and errors. Use `czstring` in preference to `const char*`.
 指向`char`的指针指向风格字符串（以零结尾的字符字符串）的假设仍然是隐含的，这可能会导致混淆和错误。使用`czstring`优先于`const char*`。
 
 ```cpp
@@ -2058,395 +2057,437 @@ int length(not_null<zstring> p);
 * （简单）（（基础））如果函数在访问一个指针参数之前，在所有控制流路径上检查它是否为`nullptr`，则警告需要将其声明为`not_null`。
 * （复杂）如果具有指针返回值的函数确保它在所有返回路径上都不是`nullptr`，则警告返回类型应声明为`not_null`。
 
-### <a name="Ri-array"></a>I.13: Do not pass an array as a single pointer
+### <a name="Ri-array"></a>I.13: 不要将数组作为单个指针传递
 
 ##### Reason
 
- (pointer, size)-style interfaces are error-prone. Also, a plain pointer (to array) must rely on some convention to allow the callee to determine the size.
+(pointer, size)样式的接口容易出错。此外，普通指针（指向数组）必须依赖于某种约定，以允许被调用方确定大小。
 
 ##### Example
 
-Consider:
+考虑：
 
-    void copy_n(const T* p, T* q, int n); // copy from [p:p+n) to [q:q+n)
+```cpp
+void copy_n(const T* p, T* q, int n); // copy from [p:p+n) to [q:q+n)
+```
 
-What if there are fewer than `n` elements in the array pointed to by `q`? Then, we overwrite some probably unrelated memory.
-What if there are fewer than `n` elements in the array pointed to by `p`? Then, we read some probably unrelated memory.
-Either is undefined behavior and a potentially very nasty bug.
+如果由`q`指向的数组中的元素少于`n`，该怎么办？那么，我们会覆盖一些可能不相关的内存。
+如果由`p`指向的数组中的元素少于`n`，该怎么办？那么，我们读取一些可能不相关的内存。
+要么是未定义的行为，要么是潜在的非常讨厌的bug。
 
 ##### Alternative
 
-Consider using explicit spans:
+考虑使用显式span：
 
-    void copy(span<const T> r, span<T> r2); // copy r to r2
+```cpp
+void copy(span<const T> r, span<T> r2); // copy r to r2
+```
 
 ##### Example, bad
 
-Consider:
+考虑：
 
-    void draw(Shape* p, int n);  // poor interface; poor code
-    Circle arr[10];
-    // ...
-    draw(arr, 10);
+```cpp
+void draw(Shape* p, int n);  // poor interface; poor code
+Circle arr[10];
+// ...
+draw(arr, 10);
+```
 
-Passing `10` as the `n` argument might be a mistake: the most common convention is to assume `[0:n)` but that is nowhere stated. Worse is that the call of `draw()` compiled at all: there was an implicit conversion from array to pointer (array decay) and then another implicit conversion from `Circle` to `Shape`. There is no way that `draw()` can safely iterate through that array: it has no way of knowing the size of the elements.
+将`10`作为`n`参数传递可能是一个错误：最常见的约定是假定为`[0:n)`，但这一点没有说明。更糟糕的是，`draw()`的调用完全按照以下方式编译：从数组到指针（数组衰减）进行隐式转换，然后从`Circle`到`Shape`进行另一次隐式转换。`draw()`不可能安全地遍历该数组：它无法知道元素的大小。
 
-**Alternative**: Use a support class that ensures that the number of elements is correct and prevents dangerous implicit conversions. For example:
+**备选**: 使用支持类，以确保元素的数量正确，并防止危险的隐式转换。例如：
 
-    void draw2(span<Circle>);
-    Circle arr[10];
-    // ...
-    draw2(span<Circle>(arr));  // deduce the number of elements
-    draw2(arr);    // deduce the element type and array size
+```cpp
+void draw2(span<Circle>);
+Circle arr[10];
+// ...
+draw2(span<Circle>(arr));  // deduce the number of elements
+draw2(arr);    // deduce the element type and array size
 
-    void draw3(span<Shape>);
-    draw3(arr);    // error: cannot convert Circle[10] to span<Shape>
+void draw3(span<Shape>);
+draw3(arr);    // error: cannot convert Circle[10] to span<Shape>
+```
 
-This `draw2()` passes the same amount of information to `draw()`, but makes the fact that it is supposed to be a range of `Circle`s explicit. See ???.
+本例中的`draw2()`与 `draw()`在参数中传递的信息量是相同的，但是它却使得`Circle`数组的范围得以显式传递。参见???。
 
 ##### Exception
 
 Use `zstring` and `czstring` to represent C-style, zero-terminated strings.
 But when doing so, use `std::string_view` or `span<char>` from the [GSL](#S-gsl) to prevent range errors.
 
+使用`zstring`和`czstring`来表示C风格的、以零结尾的字符串。
+但在执行此操作时，请使用[GSL](#S-gsl)中的`std::string_view`或`span<char>`，以防止范围错误。
+
 ##### Enforcement
 
-* (Simple) ((Bounds)) Warn for any expression that would rely on implicit conversion of an array type to a pointer type. Allow exception for zstring/czstring pointer types.
-* (Simple) ((Bounds)) Warn for any arithmetic operation on an expression of pointer type that results in a value of pointer type. Allow exception for zstring/czstring pointer types.
+* (简单) ((边界)) 警告任何依赖于数组类型到指针类型的隐式转换的表达式。允许zstring/czstring指针类型例外。
+* (简单) ((边界)) 警告任何在指针类型表达式进行结果为指针类型值的算术运算。允许zstring/czstring指针类型例外。
 
-### <a name="Ri-global-init"></a>I.22: Avoid complex initialization of global objects
+### <a name="Ri-global-init"></a>I.22: 避免全局对象的复杂初始化
 
 ##### Reason
 
-Complex initialization can lead to undefined order of execution.
+复杂的初始化可能导致未定义的执行顺序。
 
 ##### Example
 
-    // file1.c
+```cpp
+// file1.c
 
-    extern const X x;
+extern const X x;
 
-    const Y y = f(x);   // read x; write y
+const Y y = f(x);   // read x; write y
 
-    // file2.c
+// file2.c
 
-    extern const Y y;
+extern const Y y;
 
-    const X x = g(y);   // read y; write x
+const X x = g(y);   // read y; write x
+```
 
-Since `x` and `y` are in different translation units the order of calls to `f()` and `g()` is undefined;
-one will access an uninitialized `const`.
-This shows that the order-of-initialization problem for global (namespace scope) objects is not limited to global *variables*.
+由于`x`和`y`在不同的编译器中，对`f()`和`g()`的调用顺序没有定义；
+导致可以访问未初始化的`const`变量。
+这表明全局（命名空间范围）对象的初始化问题的顺序不限于全局*变量*。
 
 ##### Note
 
-Order of initialization problems become particularly difficult to handle in concurrent code.
-It is usually best to avoid global (namespace scope) objects altogether.
+在并发代码中，初始化顺序问题变得特别难以处理。
+通常最好完全避免全局（命名空间范围）对象。
 
 ##### Enforcement
 
-* Flag initializers of globals that call non-`constexpr` functions
-* Flag initializers of globals that access `extern` objects
+* 标记调用非`constexpr`函数的全局变量初始化器
+* 标记访问`extern`对象的全局变量初始化器
 
-### <a name="Ri-nargs"></a>I.23: Keep the number of function arguments low
+### <a name="Ri-nargs"></a>I.23: 使函数参数的数量保持较少
 
 ##### Reason
 
-Having many arguments opens opportunities for confusion. Passing lots of arguments is often costly compared to alternatives.
+有太多参数会造成混乱。与其他选择相比，传递大量的参数往往代价高昂。
 
 ##### Discussion
 
-The two most common reasons why functions have too many parameters are:
+函数参数过多的两个最常见原因是：
 
-1. *Missing an abstraction.*
-   There is an abstraction missing, so that a compound value is being
-   passed as individual elements instead of as a single object that enforces an invariant.
-   This not only expands the parameter list, but it leads to errors because the component values
-   are no longer protected by an enforced invariant.
+1. *缺少抽象。*
+   缺少抽象，因此复合值将作为单个元素传递，而不是作为强制不变的单个对象传递。
+   这不仅会扩展参数列表，还会导致错误，因为组件值不再受强制不变量的保护。
 
-2. *Violating "one function, one responsibility."*
-   The function is trying to do more than one job and should probably be refactored.
+2. *违反“函数单一职责”原则*
+   该函数正在尝试执行多个任务，可能应该进行重构。
 
 ##### Example
 
-The standard-library `merge()` is at the limit of what we can comfortably handle:
+标准库`merge()`已经到了我们可以轻松处理的极限：
 
-    template<class InputIterator1, class InputIterator2, class OutputIterator, class Compare>
-    OutputIterator merge(InputIterator1 first1, InputIterator1 last1,
-                         InputIterator2 first2, InputIterator2 last2,
-                         OutputIterator result, Compare comp);
+```cpp
+template<class InputIterator1, class InputIterator2, class OutputIterator, class Compare>
+OutputIterator merge(InputIterator1 first1, InputIterator1 last1,
+                     InputIterator2 first2, InputIterator2 last2,
+                     OutputIterator result, Compare comp);
+```
 
-Note that this is because of problem 1 above -- missing abstraction. Instead of passing a range (abstraction), STL passed iterator pairs (unencapsulated component values).
+注意，这么多参数正是因为上面的问题1——缺少抽象。STL传递迭代器对（未封装的组件值），而不是传递范围（抽象）。
 
-Here, we have four template arguments and six function arguments.
-To simplify the most frequent and simplest uses, the comparison argument can be defaulted to `<`:
+这里，我们有四个模板参数和六个函数参数。
+为了简化最频繁和最简单的使用，比较参数可以默认为`<`：
 
-    template<class InputIterator1, class InputIterator2, class OutputIterator>
-    OutputIterator merge(InputIterator1 first1, InputIterator1 last1,
-                         InputIterator2 first2, InputIterator2 last2,
-                         OutputIterator result);
+```cpp
+template<class InputIterator1, class InputIterator2, class OutputIterator>
+OutputIterator merge(InputIterator1 first1, InputIterator1 last1,
+                     InputIterator2 first2, InputIterator2 last2,
+                     OutputIterator result);
+```
 
-This doesn't reduce the total complexity, but it reduces the surface complexity presented to many users.
-To really reduce the number of arguments, we need to bundle the arguments into higher-level abstractions:
+这并没有降低总体复杂度，但它降低了呈现给许多用户的表面复杂度。
+为了真正减少参数数量，我们需要将参数捆绑到更高级别的抽象中：
 
-    template<class InputRange1, class InputRange2, class OutputIterator>
-    OutputIterator merge(InputRange1 r1, InputRange2 r2, OutputIterator result);
+```cpp
+template<class InputRange1, class InputRange2, class OutputIterator>
+OutputIterator merge(InputRange1 r1, InputRange2 r2, OutputIterator result);
+```
 
-Grouping arguments into "bundles" is a general technique to reduce the number of arguments and to increase the opportunities for checking.
+将参数分组为“包”是一种减少参数数量并增加检查机会的通用技术。
 
 Alternatively, we could use a standard library concept to define the notion of three types that must be usable for merging:
+或者，我们可以使用标准库concept来定义三种类型的概念，这些类型必须可用于合并：
 
-    template<class In1, class In2, class Out>
-      requires mergeable<In1, In2, Out>
-    Out merge(In1 r1, In2 r2, Out result);
+```cpp
+template<class In1, class In2, class Out>
+   requires mergeable<In1, In2, Out>
+Out merge(In1 r1, In2 r2, Out result);
+```
 
 ##### Example
 
-The safety Profiles recommend replacing
+The safety Profiles 建议将
 
-    void f(int* some_ints, int some_ints_length);  // BAD: C style, unsafe
+```cpp
+void f(int* some_ints, int some_ints_length);  // BAD: C style, unsafe
+```
 
-with
+替换为：
 
-    void f(gsl::span<int> some_ints);              // GOOD: safe, bounds-checked
+```cpp
+void f(gsl::span<int> some_ints);              // GOOD: safe, bounds-checked
+```
 
-Here, using an abstraction has safety and robustness benefits, and naturally also reduces the number of parameters.
+在这里，使用抽象具有安全性和健壮性优势，并且自然也减少了参数的数量。
 
 ##### Note
 
-How many parameters are too many? Try to use fewer than four (4) parameters.
-There are functions that are best expressed with four individual parameters, but not many.
+多少个参数太多？尽量使用少于四（4）个参数。
+有些函数最好用四个单独的参数来表示，但这样的函数不是很多。
 
-**Alternative**: Use better abstraction: Group arguments into meaningful objects and pass the objects (by value or by reference).
+**备选**: 使用更好的抽象：将参数分组为有意义的对象，并传递对象（通过值或引用）。
 
-**Alternative**: Use default arguments or overloads to allow the most common forms of calls to be done with fewer arguments.
+**备选**: 使用默认参数或重载可以使用较少的参数完成最常见的调用形式。
 
 ##### Enforcement
 
-* Warn when a function declares two iterators (including pointers) of the same type instead of a range or a view.
-* (Not enforceable) This is a philosophical guideline that is infeasible to check directly.
+* 当函数声明相同类型的两个迭代器（包括指针）而不是范围或视图时发出警告。
+* (不可执行) 这是一个无法直接检查的哲学准则。
 
-### <a name="Ri-unrelated"></a>I.24: Avoid adjacent parameters that can be invoked by the same arguments in either order with different meaning
+### <a name="Ri-unrelated"></a>I.24: 避免使相邻的参数可以由相同的参数以不同的顺序调用，从而导致不同意义
 
 ##### Reason
 
-Adjacent arguments of the same type are easily swapped by mistake.
+相同类型的相邻参数很容易被错误地交换。
 
 ##### Example, bad
 
-Consider:
+考虑：
 
-    void copy_n(T* p, T* q, int n);  // copy from [p:p + n) to [q:q + n)
+```cpp
+void copy_n(T* p, T* q, int n);  // copy from [p:p + n) to [q:q + n)
+```
 
-This is a nasty variant of a K&R C-style interface. It is easy to reverse the "to" and "from" arguments.
+这是K&R C风格接口的一个讨厌的变体。反转“to”和“from”参数很容易。
 
-Use `const` for the "from" argument:
+为"from"参数使用`const`：
 
-    void copy_n(const T* p, T* q, int n);  // copy from [p:p + n) to [q:q + n)
+```cpp
+void copy_n(const T* p, T* q, int n);  // copy from [p:p + n) to [q:q + n)
+```
 
 ##### Exception
 
-If the order of the parameters is not important, there is no problem:
+如果参数的顺序不重要，则没有问题：
 
-    int max(int a, int b);
+```cpp
+int max(int a, int b);
+```
 
 ##### Alternative
 
-Don't pass arrays as pointers, pass an object representing a range (e.g., a `span`):
+不要将数组作为指针传递，传递表示范围的对象（例如，`span`）：
 
-    void copy_n(span<const T> p, span<T> q);  // copy from p to q
+```cpp
+void copy_n(span<const T> p, span<T> q);  // copy from p to q
+```
 
 ##### Alternative
 
 Define a `struct` as the parameter type and name the fields for those parameters accordingly:
+定义一个`struct`作为参数类型，并相应地命名这些参数的字段：
 
-    struct SystemParams {
-        string config_file;
-        string output_path;
-        seconds timeout;
-    };
-    void initialize(SystemParams p);
+```cpp
+struct SystemParams {
+    string config_file;
+    string output_path;
+    seconds timeout;
+};
+void initialize(SystemParams p);
+```
 
-This tends to make invocations of this clear to future readers, as the parameters
-are often filled in by name at the call site.
+这会让未来的读者更清楚地调用它，因为参数通常在调用地点按名称填写。
 
 ##### Note
 
-Only the interface's designer can adequately address the source of violations of this guideline.
+只有接口设计者才能充分解决违反本指南的根源。
 
 ##### Enforcement strategy
 
-(Simple) Warn if two consecutive parameters share the same type
+(简单) 如果两个连续参数共享同一类型，则发出警告。
 
-We are still looking for a less-simple enforcement.
+我们仍在寻求一种不那么简单的执行方式。
 
-### <a name="Ri-abstract"></a>I.25: Prefer empty abstract classes as interfaces to class hierarchies
+### <a name="Ri-abstract"></a>I.25: 与类层次结构相比，更喜欢使用空抽象类作为接口
 
 ##### Reason
 
-Abstract classes that are empty (have no non-static member data) are more likely to be stable than base classes with state.
+空的抽象类（没有非静态成员数据）比具有状态的基类更可能是稳定的。
 
 ##### Example, bad
 
-You just knew that `Shape` would turn up somewhere :-)
+你只知道`Shape`会出现在某个地方 :-)
 
-    class Shape {  // bad: interface class loaded with data
-    public:
-        Point center() const { return c; }
-        virtual void draw() const;
-        virtual void rotate(int);
-        // ...
-    private:
-        Point c;
-        vector<Point> outline;
-        Color col;
-    };
+```cpp
+class Shape {  // bad: interface class loaded with data
+public:
+    Point center() const { return c; }
+    virtual void draw() const;
+    virtual void rotate(int);
+    // ...
+private:
+    Point c;
+    vector<Point> outline;
+    Color col;
+};
+```
 
-This will force every derived class to compute a center -- even if that's non-trivial and the center is never used. Similarly, not every `Shape` has a `Color`, and many `Shape`s are best represented without an outline defined as a sequence of `Point`s. Using an abstract class is better:
+这将迫使每个派生类计算一个`center`——即使这很重要，而且从未使用过`center`。类似地，并非每个`Shape`都有`Color`，许多`Shape`最好在没有定义为`Point`序列的轮廓的情况下进行表示。使用抽象类更好：
 
-    class Shape {    // better: Shape is a pure interface
-    public:
-        virtual Point center() const = 0;   // pure virtual functions
-        virtual void draw() const = 0;
-        virtual void rotate(int) = 0;
-        // ...
-        // ... no data members ...
-        // ...
-        virtual ~Shape() = default;
-    };
+```cpp
+class Shape {    // better: Shape is a pure interface
+public:
+    virtual Point center() const = 0;   // pure virtual functions
+    virtual void draw() const = 0;
+    virtual void rotate(int) = 0;
+    // ...
+    // ... no data members ...
+    // ...
+    virtual ~Shape() = default;
+};
+```
 
 ##### Enforcement
 
-(Simple) Warn if a pointer/reference to a class `C` is assigned to a pointer/reference to a base of `C` and the base class contains data members.
+（简单）如果将类`C`的指针/引用分配给基类`C`的指针/引用，并且基类包含数据成员，则发出警告。
 
-### <a name="Ri-abi"></a>I.26: If you want a cross-compiler ABI, use a C-style subset
+### <a name="Ri-abi"></a>I.26: 如果需要交叉编译器ABI，请使用C风格的子集的C++
 
 ##### Reason
 
-Different compilers implement different binary layouts for classes, exception handling, function names, and other implementation details.
+不同的编译器为类、异常处理、函数名和其他实现细节实现不同的二进制布局。
 
 ##### Exception
 
-Common ABIs are emerging on some platforms freeing you from the more draconian restrictions.
+一些平台上出现了常见的ABI，将您从更严格的限制中解放出来。
 
 ##### Note
 
-If you use a single compiler, you can use full C++ in interfaces. That might require recompilation after an upgrade to a new compiler version.
+如果使用单个编译器，则可以在接口中使用完整的C++。这可能需要在升级到新编译器版本后重新编译。
 
 ##### Enforcement
 
-(Not enforceable) It is difficult to reliably identify where an interface forms part of an ABI.
+（不可执行）很难可靠地确定接口在何处构成ABI的一部分。
 
-### <a name="Ri-pimpl"></a>I.27: For stable library ABI, consider the Pimpl idiom
+### <a name="Ri-pimpl"></a>I.27: 要获得稳定的库ABI，请考虑Pimpl惯用法
 
 ##### Reason
 
-Because private data members participate in class layout and private member functions participate in overload resolution, changes to those
-implementation details require recompilation of all users of a class that uses them. A non-polymorphic interface class holding a pointer to
-implementation (Pimpl) can isolate the users of a class from changes in its implementation at the cost of an indirection.
+因为私有数据成员参与类布局，私有成员函数参与重载解析，所以当这些实现细节发生更改时，需要重新编译使用类的所有用户。持有实现指针（Pimpl）的非多态接口类可以将类的用户与其实现中的更改隔离开来，代价是间接寻址。
 
 ##### Example
 
-interface (widget.h)
+接口 (widget.h)
 
-    class widget {
-        class impl;
-        std::unique_ptr<impl> pimpl;
-    public:
-        void draw(); // public API that will be forwarded to the implementation
-        widget(int); // defined in the implementation file
-        ~widget();   // defined in the implementation file, where impl is a complete type
-        widget(widget&&); // defined in the implementation file
-        widget(const widget&) = delete;
-        widget& operator=(widget&&); // defined in the implementation file
-        widget& operator=(const widget&) = delete;
-    };
+```cpp
+class widget {
+    class impl;
+    std::unique_ptr<impl> pimpl;
+public:
+    void draw(); // public API that will be forwarded to the implementation
+    widget(int); // defined in the implementation file
+    ~widget();   // defined in the implementation file, where impl is a complete type
+    widget(widget&&); // defined in the implementation file
+    widget(const widget&) = delete;
+    widget& operator=(widget&&); // defined in the implementation file
+    widget& operator=(const widget&) = delete;
+};
+```
 
+实现 (widget.cpp)
 
-implementation (widget.cpp)
-
-    class widget::impl {
-        int n; // private data
-    public:
-        void draw(const widget& w) { /* ... */ }
-        impl(int n) : n(n) {}
-    };
-    void widget::draw() { pimpl->draw(*this); }
-    widget::widget(int n) : pimpl{std::make_unique<impl>(n)} {}
-    widget::widget(widget&&) = default;
-    widget::~widget() = default;
-    widget& widget::operator=(widget&&) = default;
+```cpp
+class widget::impl {
+    int n; // private data
+public:
+    void draw(const widget& w) { /* ... */ }
+    impl(int n) : n(n) {}
+};
+void widget::draw() { pimpl->draw(*this); }
+widget::widget(int n) : pimpl{std::make_unique<impl>(n)} {}
+widget::widget(widget&&) = default;
+widget::~widget() = default;
+widget& widget::operator=(widget&&) = default;
+```
 
 ##### Notes
 
-See [GOTW #100](https://herbsutter.com/gotw/_100/) and [cppreference](http://en.cppreference.com/w/cpp/language/pimpl) for the trade-offs and additional implementation details associated with this idiom.
+参见[GOTW #100](https://herbsutter.com/gotw/_100/)以及[cppreference](http://en.cppreference.com/w/cpp/language/pimpl)了解与此惯用法相关的权衡和其他实现细节。
 
 ##### Enforcement
 
-(Not enforceable) It is difficult to reliably identify where an interface forms part of an ABI.
+（不可执行）很难可靠地确定接口在何处构成ABI的一部分。
 
-### <a name="Ri-encapsulate"></a>I.30: Encapsulate rule violations
+### <a name="Ri-encapsulate"></a>I.30: 封装违反规则的部分
 
 ##### Reason
 
-To keep code simple and safe.
-Sometimes, ugly, unsafe, or error-prone techniques are necessary for logical or performance reasons.
-If so, keep them local, rather than "infecting" interfaces so that larger groups of programmers have to be aware of the
-subtleties.
-Implementation complexity should, if at all possible, not leak through interfaces into user code.
+保持代码简单和安全。
+有时，出于逻辑或性能原因，丑陋、不安全或容易出错的技术是必要的。
+如果是这样的话，就让它们保持在本地，而不是“感染”接口，这样更大的程序员群体就必须意识到其中的微妙之处。
+如果可能的话，实现的复杂性应该不会通过接口泄漏到用户代码中。
 
 ##### Example
 
-Consider a program that, depending on some form of input (e.g., arguments to `main`), should consume input
-from a file, from the command line, or from standard input.
-We might write
+考虑一个程序，根据某种形式的输入（例如，`main`的参数），它应该使用来自文件、命令行或标准输入的输入。
+我们可以写
 
-    bool owned;
-    owner<istream*> inp;
-    switch (source) {
-    case std_in:        owned = false; inp = &cin;                       break;
-    case command_line:  owned = true;  inp = new istringstream{argv[2]}; break;
-    case file:          owned = true;  inp = new ifstream{argv[2]};      break;
-    }
-    istream& in = *inp;
+```cpp
+bool owned;
+owner<istream*> inp;
+switch (source) {
+case std_in:        owned = false; inp = &cin;                       break;
+case command_line:  owned = true;  inp = new istringstream{argv[2]}; break;
+case file:          owned = true;  inp = new ifstream{argv[2]};      break;
+}
+istream& in = *inp;
+```
 
-This violated the rule [against uninitialized variables](#Res-always),
-the rule against [ignoring ownership](#Ri-raw),
-and the rule [against magic constants](#Res-magic).
-In particular, someone has to remember to somewhere write
+这里违反了规则[必须初始化变量](#Res-always)，
+也违反了[转移所有权](#Ri-raw)的规则，
+以及 [反对魔法常数](#Res-magic)。
+特别是，必须有人记住在某个地方写下
 
-    if (owned) delete inp;
+```cpp
+if (owned) delete inp;
+```
 
-We could handle this particular example by using `unique_ptr` with a special deleter that does nothing for `cin`,
-but that's complicated for novices (who can easily encounter this problem) and the example is an example of a more general
-problem where a property that we would like to consider static (here, ownership) needs infrequently be addressed
-at run time.
-The common, most frequent, and safest examples can be handled statically, so we don't want to add cost and complexity to those.
-But we must also cope with the uncommon, less-safe, and necessarily more expensive cases.
-Such examples are discussed in [[Str15]](http://www.stroustrup.com/resource-model.pdf).
+我们可以通过将`unique_ptr`与一个特殊的删除器一起使用来处理这个特定的示例，该删除器对`cin`不起任何作用，但这对于新手（很容易遇到这个问题）来说很复杂，
+这个示例是一个更一般的问题的示例，在这个问题中，我们希望在运行时不经常处理静态属性（这里是所有权）。
 
-So, we write a class
+常见、最频繁和最安全的示例可以静态处理，因此我们不想增加这些示例的成本和复杂性。
+但我们也必须应对罕见的、不太安全的、必然更昂贵的场景。
+[[Str15]](http://www.stroustrup.com/resource-model.pdf)中讨论了此类示例。
 
-    class Istream { [[gsl::suppress(lifetime)]]
-    public:
-        enum Opt { from_line = 1 };
-        Istream() { }
-        Istream(zstring p) : owned{true}, inp{new ifstream{p}} {}            // read from file
-        Istream(zstring p, Opt) : owned{true}, inp{new istringstream{p}} {}  // read from command line
-        ~Istream() { if (owned) delete inp; }
-        operator istream&() { return *inp; }
-    private:
-        bool owned = false;
-        istream* inp = &cin;
-    };
+所以，我们写下如下类
 
-Now, the dynamic nature of `istream` ownership has been encapsulated.
-Presumably, a bit of checking for potential errors would be added in real code.
+```cpp
+class Istream { [[gsl::suppress(lifetime)]]
+public:
+    enum Opt { from_line = 1 };
+    Istream() { }
+    Istream(zstring p) : owned{true}, inp{new ifstream{p}} {}            // read from file
+    Istream(zstring p, Opt) : owned{true}, inp{new istringstream{p}} {}  // read from command line
+    ~Istream() { if (owned) delete inp; }
+    operator istream&() { return *inp; }
+private:
+    bool owned = false;
+    istream* inp = &cin;
+};
+```
+
+现在，“istream”所有权的动态性质已被封装。
+想必，实际代码中可能会添加一些对潜在错误的检查。
 
 ##### Enforcement
 
-* Hard, it is hard to decide what rule-breaking code is essential
-* Flag rule suppression that enable rule-violations to cross interfaces
+* 很难，很难决定什么违反规则的代码是必要的
+* 标记允许跨接口违反规则的规则抑制
 
 # <a name="S-functions"></a>F: Functions
 
